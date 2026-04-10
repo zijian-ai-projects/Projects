@@ -1,8 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { act } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import SearchEnginesPage from "@/app/(workspace)/search-engines/page";
 
 describe("SearchEnginesPage", () => {
@@ -47,5 +50,52 @@ describe("SearchEnginesPage", () => {
     await user.click(bingCard);
 
     expect(window.localStorage.getItem("dualens:selectedSearchEngineId")).toBe("bing");
+  });
+
+  it("hydrates without mismatch when a saved engine exists", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+    const container = document.createElement("div");
+
+    window.localStorage.setItem("dualens:selectedSearchEngineId", "google");
+
+    try {
+      Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: undefined
+      });
+
+      const serverMarkup = renderToString(<SearchEnginesPage />);
+
+      if (windowDescriptor) {
+        Object.defineProperty(globalThis, "window", windowDescriptor);
+      }
+
+      document.body.appendChild(container);
+      container.innerHTML = serverMarkup;
+
+      let root: ReturnType<typeof hydrateRoot> | undefined;
+
+      await act(async () => {
+        root = hydrateRoot(container, <SearchEnginesPage />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole("radio", { name: /Google.*未配置/ })).toHaveAttribute(
+          "aria-checked",
+          "true"
+        );
+      });
+
+      expect(errorSpy).not.toHaveBeenCalled();
+      root?.unmount();
+    } finally {
+      container.remove();
+      errorSpy.mockRestore();
+
+      if (windowDescriptor) {
+        Object.defineProperty(globalThis, "window", windowDescriptor);
+      }
+    }
   });
 });

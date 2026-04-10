@@ -14,11 +14,15 @@ export function loadSelectedSearchEngineId(): SearchEngineId {
     return DEFAULT_ENGINE_ID;
   }
 
-  const savedValue = window.localStorage.getItem(STORAGE_KEY);
+  try {
+    const savedValue = window.localStorage.getItem(STORAGE_KEY);
 
-  return savedValue && validSearchEngineIds.has(savedValue as SearchEngineId)
-    ? (savedValue as SearchEngineId)
-    : DEFAULT_ENGINE_ID;
+    return savedValue && validSearchEngineIds.has(savedValue as SearchEngineId)
+      ? (savedValue as SearchEngineId)
+      : DEFAULT_ENGINE_ID;
+  } catch {
+    return DEFAULT_ENGINE_ID;
+  }
 }
 
 export function saveSelectedSearchEngineId(id: SearchEngineId) {
@@ -26,5 +30,9 @@ export function saveSelectedSearchEngineId(id: SearchEngineId) {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, id);
+  try {
+    window.localStorage.setItem(STORAGE_KEY, id);
+  } catch {
+    // Ignore storage write failures and keep the UI functional.
+  }
 }

@@ -15,9 +15,8 @@ import {
 import { useSelectableCardGroup } from "@/lib/use-selectable-card-group";
 
 export default function SearchEnginesPage() {
-  const [selectedEngineId, setSelectedEngineId] = useState<SearchEngineId>(() =>
-    loadSelectedSearchEngineId()
-  );
+  const [selectedEngineId, setSelectedEngineId] = useState<SearchEngineId>("tavily");
+  const [hasLoadedPreference, setHasLoadedPreference] = useState(false);
   const selectedEngine =
     searchEngineItems.find((item) => item.id === selectedEngineId) ?? searchEngineItems[0];
   const { getItemProps } = useSelectableCardGroup({
@@ -27,8 +26,17 @@ export default function SearchEnginesPage() {
   });
 
   useEffect(() => {
+    setSelectedEngineId(loadSelectedSearchEngineId());
+    setHasLoadedPreference(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedPreference) {
+      return;
+    }
+
     saveSelectedSearchEngineId(selectedEngineId);
-  }, [selectedEngineId]);
+  }, [hasLoadedPreference, selectedEngineId]);
 
   return (
     <div className="space-y-8 px-6 py-8 lg:px-10 lg:py-10">

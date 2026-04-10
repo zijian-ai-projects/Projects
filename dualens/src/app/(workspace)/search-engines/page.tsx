@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SectionCard } from "@/components/common/section-card";
 import { PageHeader } from "@/components/common/page-header";
 import { SelectionCardItem } from "@/components/common/selection-card-item";
@@ -8,10 +8,16 @@ import { StatusTag } from "@/components/common/status-tag";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { searchEngineItems, type SearchEngineId } from "@/lib/search-engine-options";
+import {
+  loadSelectedSearchEngineId,
+  saveSelectedSearchEngineId
+} from "@/lib/search-engine-preferences";
 import { useSelectableCardGroup } from "@/lib/use-selectable-card-group";
 
 export default function SearchEnginesPage() {
-  const [selectedEngineId, setSelectedEngineId] = useState<SearchEngineId>("tavily");
+  const [selectedEngineId, setSelectedEngineId] = useState<SearchEngineId>(() =>
+    loadSelectedSearchEngineId()
+  );
   const selectedEngine =
     searchEngineItems.find((item) => item.id === selectedEngineId) ?? searchEngineItems[0];
   const { getItemProps } = useSelectableCardGroup({
@@ -19,6 +25,10 @@ export default function SearchEnginesPage() {
     selectedId: selectedEngineId,
     onSelect: setSelectedEngineId
   });
+
+  useEffect(() => {
+    saveSelectedSearchEngineId(selectedEngineId);
+  }, [selectedEngineId]);
 
   return (
     <div className="space-y-8 px-6 py-8 lg:px-10 lg:py-10">

@@ -24,9 +24,9 @@ describe("ProvidersPage", () => {
     expect(openAiCard).toHaveAttribute("aria-checked", "true");
     expect(deepSeekCard).toHaveAttribute("aria-checked", "false");
     expect(screen.getByRole("heading", { level: 2, name: "OpenAI" })).toBeInTheDocument();
+    expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://api.openai.com/v1");
+    expect(screen.getByLabelText("模型 ID")).toHaveValue("");
     expect(screen.getByLabelText("API Key")).toBeInTheDocument();
-    expect(screen.getByLabelText("模型 ID")).toBeInTheDocument();
-    expect(screen.getByLabelText("API Endpoint")).toBeInTheDocument();
     expect(screen.getAllByTestId("selection-indicator")).toHaveLength(4);
   });
 });

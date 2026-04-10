@@ -72,6 +72,7 @@ export default function ProvidersPage() {
         </SectionCard>
 
         <SectionCard
+          key={selectedProvider.id}
           title={selectedProvider.name}
           description={selectedProvider.apiKeyHint}
           action={

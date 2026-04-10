@@ -24,6 +24,7 @@ describe("SearchEnginesPage", () => {
     expect(googleCard).toHaveAttribute("aria-checked", "true");
     expect(tavilyCard).toHaveAttribute("aria-checked", "false");
     expect(screen.getByRole("heading", { level: 2, name: "Google" })).toBeInTheDocument();
+    expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://customsearch.googleapis.com");
     expect(screen.getByLabelText("Engine ID / CX / App ID")).toBeInTheDocument();
     expect(screen.getAllByTestId("selection-indicator")).toHaveLength(4);
   });

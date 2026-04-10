@@ -37,6 +37,7 @@ export default function SearchEnginesPage() {
         </SectionCard>
 
         <SectionCard
+          key={selectedEngine.id}
           title={selectedEngine.name}
           description={selectedEngine.helperText}
           action={

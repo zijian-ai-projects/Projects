@@ -1,0 +1,19 @@
+import { PageHeader } from "@/components/common/page-header";
+import { SectionCard } from "@/components/common/section-card";
+
+export default function SearchEnginesPage() {
+  return (
+    <div className="space-y-8 px-6 py-8 lg:px-10 lg:py-10">
+      <PageHeader
+        title="搜索引擎"
+        description="配置默认检索引擎与各引擎的接入参数，保持辩论前的检索环境清晰统一。"
+      />
+      <SectionCard
+        title="搜索引擎列表"
+        description="先建立一级页面与页面标题，随后在同一文件里接入左右分栏配置结构。"
+      >
+        <div className="text-sm text-app-muted">Bing / 百度 / Google / Tavily</div>
+      </SectionCard>
+    </div>
+  );
+}

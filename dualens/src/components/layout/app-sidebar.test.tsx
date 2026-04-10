@@ -1,10 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const { usePathname } = vi.hoisted(() => ({
-  usePathname: vi.fn()
+  usePathname: vi.fn(() => "/search-engines")
 }));
 
 vi.mock("next/navigation", () => ({
@@ -28,18 +28,16 @@ vi.mock("next/link", () => ({
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
 
-describe("AppSidebar", () => {
-  beforeEach(() => {
-    usePathname.mockReturnValue("/providers");
-  });
-
-  it("renders the four primary navigation links and marks the active route", () => {
+describe("workspace navigation copy", () => {
+  it("renders the renamed five-item navigation set in order", () => {
     render(<AppSidebar />);
 
-    expect(screen.getByRole("link", { name: "辩论页" })).toHaveAttribute("href", "/debate");
-    expect(screen.getByRole("link", { name: "辩论历史页" })).toHaveAttribute("href", "/history");
-    expect(screen.getByRole("link", { name: "AI 服务商" })).toHaveAttribute("href", "/providers");
-    expect(screen.getByRole("link", { name: "通用设置" })).toHaveAttribute("href", "/settings");
-    expect(screen.getByRole("link", { name: "AI 服务商" })).toHaveAttribute("aria-current", "page");
+    const labels = screen
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("aria-label"))
+      .filter(Boolean);
+
+    expect(labels).toEqual(["辩论", "辩论历史", "AI 服务商", "搜索引擎", "通用设置"]);
+    expect(screen.getByRole("link", { name: "搜索引擎" })).toHaveAttribute("aria-current", "page");
   });
 });

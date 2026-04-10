@@ -53,7 +53,7 @@ export default function HistoryPage() {
   return (
     <div className="space-y-8 px-6 py-8 lg:px-10 lg:py-10">
       <PageHeader
-        title="辩论历史页"
+        title="辩论历史"
         description="集中管理既往问题、模型选择、双方角色设定与会话状态，让重新查看和复盘成为标准流程。"
       />
       <SectionCard title="检索与筛选" description="先按问题搜索，再按状态缩小记录范围。">

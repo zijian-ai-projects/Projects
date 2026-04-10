@@ -8,7 +8,7 @@ export function Card({ className, children, ...props }: CardProps) {
   return (
     <section
       className={[
-        "surface p-5",
+        "surface p-6",
         className ?? ""
       ]
         .filter(Boolean)
@@ -22,7 +22,7 @@ export function Card({ className, children, ...props }: CardProps) {
 
 export function CardHeader({ className, children, ...props }: CardProps) {
   return (
-    <header className={["mb-4 space-y-1", className ?? ""].filter(Boolean).join(" ")} {...props}>
+    <header className={["mb-5 space-y-1", className ?? ""].filter(Boolean).join(" ")} {...props}>
       {children}
     </header>
   );
@@ -35,7 +35,7 @@ export function CardTitle({
 }: CardProps) {
   return (
     <h2
-      className={["text-lg font-semibold tracking-tight text-ink", className ?? ""]
+      className={["text-lg font-semibold tracking-tight text-app-strong", className ?? ""]
         .filter(Boolean)
         .join(" ")}
       {...props}
@@ -52,7 +52,7 @@ export function CardDescription({
 }: CardProps) {
   return (
     <p
-      className={["text-sm leading-6 text-ink/68", className ?? ""].filter(Boolean).join(" ")}
+      className={["text-sm leading-6 text-app-muted", className ?? ""].filter(Boolean).join(" ")}
       {...props}
     >
       {children}

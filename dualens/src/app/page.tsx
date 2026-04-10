@@ -1,8 +1,5 @@
-"use client";
-
-import { SessionShell } from "@/components/session-shell";
-import { createSession } from "@/app/session-client";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <SessionShell createSession={createSession} />;
+  redirect("/debate");
 }

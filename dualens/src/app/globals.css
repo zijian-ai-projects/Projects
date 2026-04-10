@@ -7,25 +7,20 @@
 }
 
 html {
-  background:
-    radial-gradient(circle at top, rgba(191, 91, 44, 0.12), transparent 35%),
-    radial-gradient(circle at bottom right, rgba(73, 106, 75, 0.1), transparent 28%),
-    #f7f2e8;
+  background: #f3f3f1;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  color: #151515;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.25)),
-    transparent;
+  color: #161616;
+  background: #f3f3f1;
   font-family:
-    "Iowan Old Style",
-    "Palatino Linotype",
-    "Book Antiqua",
-    Georgia,
-    serif;
+    "PingFang SC",
+    "Noto Sans SC",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   line-height: 1.5;
 }
 
@@ -34,7 +29,7 @@ body {
 }
 
 ::selection {
-  background: rgba(191, 91, 44, 0.28);
+  background: rgba(17, 17, 17, 0.14);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -58,22 +53,22 @@ details > summary::-webkit-details-marker {
 
 @layer components {
   .session-alert {
-    @apply rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 shadow-sm;
+    @apply rounded-[24px] border border-black/10 bg-white px-4 py-3 text-sm leading-6 text-app-foreground;
   }
 
   .research-status {
-    @apply rounded-3xl border border-accent/15 bg-[linear-gradient(135deg,rgba(191,91,44,0.09),rgba(255,255,255,0.9))] p-5 shadow-[0_12px_30px_rgba(21,21,21,0.06)];
+    @apply rounded-[28px] border border-app-line bg-app-card p-5 shadow-[0_10px_28px_rgba(0,0,0,0.03)];
   }
 
 .session-empty-state {
-    @apply rounded-2xl border border-dashed border-black/10 bg-white/70 px-4 py-3 text-sm leading-6 text-ink/60;
+    @apply rounded-[24px] border border-dashed border-app-line bg-app-card px-4 py-3 text-sm leading-6 text-app-muted;
   }
 
   .surface {
-    @apply rounded-3xl border border-black/10 bg-[rgba(255,255,255,0.9)] shadow-[0_6px_18px_rgba(21,21,21,0.05)];
+    @apply rounded-[28px] border border-app-line bg-app-card shadow-[0_10px_28px_rgba(0,0,0,0.03)];
   }
 
   .surface-soft {
-    @apply rounded-3xl border border-black/[0.08] bg-[rgba(247,242,232,0.94)] shadow-[0_4px_12px_rgba(21,21,21,0.04)];
+    @apply rounded-[28px] border border-app-line bg-app-panel shadow-[0_8px_24px_rgba(0,0,0,0.025)];
   }
 }

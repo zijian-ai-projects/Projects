@@ -5,10 +5,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#151515",
-        paper: "#f7f2e8",
-        accent: "#bf5b2c",
-        moss: "#496a4b"
+        ink: "#111111",
+        paper: "#fbfbfa",
+        accent: "#111111",
+        moss: "#6d6d6a",
+        app: "#f3f3f1",
+        "app-panel": "#fbfbfa",
+        "app-card": "#ffffff",
+        "app-foreground": "#161616",
+        "app-muted": "#6d6d6a",
+        "app-line": "#dbdbd7",
+        "app-strong": "#111111"
       }
     }
   },

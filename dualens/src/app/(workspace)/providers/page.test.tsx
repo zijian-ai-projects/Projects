@@ -18,15 +18,21 @@ describe("ProvidersPage", () => {
 
     expect(deepSeekCard).toHaveAttribute("aria-checked", "true");
     expect(openAiCard).toHaveAttribute("aria-checked", "false");
+    expect(deepSeekCard).toHaveAttribute("tabindex", "0");
+    expect(openAiCard).toHaveAttribute("tabindex", "-1");
 
-    await user.click(openAiCard);
+    deepSeekCard.focus();
+    await user.keyboard("{ArrowDown}");
 
+    expect(openAiCard).toHaveFocus();
     expect(openAiCard).toHaveAttribute("aria-checked", "true");
     expect(deepSeekCard).toHaveAttribute("aria-checked", "false");
+    expect(openAiCard).toHaveAttribute("tabindex", "0");
+    expect(deepSeekCard).toHaveAttribute("tabindex", "-1");
+
     expect(screen.getByRole("heading", { level: 2, name: "OpenAI" })).toBeInTheDocument();
     expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://api.openai.com/v1");
     expect(screen.getByLabelText("模型 ID")).toHaveValue("");
     expect(screen.getByLabelText("API Key")).toBeInTheDocument();
-    expect(screen.getAllByTestId("selection-indicator")).toHaveLength(4);
   });
 });

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/common/page-header";
-import { ProviderListItem } from "@/components/common/provider-list-item";
 import { SectionCard } from "@/components/common/section-card";
+import { SelectionCardItem } from "@/components/common/selection-card-item";
 import { StatusTag } from "@/components/common/status-tag";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useSelectableCardGroup } from "@/lib/use-selectable-card-group";
 
 type ProviderId = "deepseek" | "openai" | "gemini" | "doubao";
 
@@ -48,6 +49,11 @@ const providerItems = [
 export default function ProvidersPage() {
   const [selectedProviderId, setSelectedProviderId] = useState<ProviderId>("deepseek");
   const selectedProvider = providerItems.find((item) => item.id === selectedProviderId) ?? providerItems[0];
+  const { getItemProps } = useSelectableCardGroup({
+    items: providerItems,
+    selectedId: selectedProviderId,
+    onSelect: setSelectedProviderId
+  });
 
   return (
     <div className="space-y-8 px-6 py-8 lg:px-10 lg:py-10">
@@ -58,16 +64,23 @@ export default function ProvidersPage() {
       <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
         <SectionCard title="服务商列表" description="左侧用于切换当前正在编辑的服务商。">
           <div role="radiogroup" aria-label="AI 服务商" className="space-y-3">
-            {providerItems.map((provider) => (
-              <ProviderListItem
-                key={provider.id}
-                name={provider.name}
-                configured={provider.configured}
-                active={provider.id === selectedProviderId}
-                icon={provider.icon}
-                onClick={() => setSelectedProviderId(provider.id)}
-              />
-            ))}
+            {providerItems.map((provider) => {
+              const itemProps = getItemProps(provider.id);
+
+              return (
+                <SelectionCardItem
+                  key={provider.id}
+                  name={provider.name}
+                  configured={provider.configured}
+                  active={provider.id === selectedProviderId}
+                  icon={provider.icon}
+                  tabIndex={itemProps.tabIndex}
+                  onClick={itemProps.onClick}
+                  onKeyDown={itemProps.onKeyDown}
+                  buttonRef={itemProps.buttonRef}
+                />
+              );
+            })}
           </div>
         </SectionCard>
 

@@ -1,26 +1,39 @@
-import type { ReactNode } from "react";
+import type {
+  KeyboardEventHandler,
+  ReactNode,
+  RefCallback
+} from "react";
 import { StatusTag } from "@/components/common/status-tag";
 
-export function ProviderListItem({
+export function SelectionCardItem({
   name,
   configured,
   active,
   icon,
-  onClick
+  tabIndex,
+  onClick,
+  onKeyDown,
+  buttonRef
 }: {
   name: string;
   configured: boolean;
   active: boolean;
   icon: ReactNode;
+  tabIndex: number;
   onClick(): void;
+  onKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
+  buttonRef?: RefCallback<HTMLButtonElement>;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       role="radio"
       aria-checked={active}
       aria-label={name}
+      tabIndex={tabIndex}
       onClick={onClick}
+      onKeyDown={onKeyDown}
       className={[
         "relative flex w-full items-center justify-between rounded-[24px] border px-4 py-4 text-left transition",
         active
@@ -29,7 +42,6 @@ export function ProviderListItem({
       ].join(" ")}
     >
       <span
-        data-testid="selection-indicator"
         aria-hidden="true"
         className={[
           "absolute right-4 top-4 flex h-5 w-5 items-center justify-center rounded-full border transition",

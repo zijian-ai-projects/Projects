@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const { usePathname } = vi.hoisted(() => ({
@@ -32,17 +32,18 @@ describe("workspace navigation copy", () => {
   it("renders the renamed five-item navigation set in order", () => {
     render(<AppSidebar />);
 
-    const labels = screen
+    const nav = screen.getByRole("navigation", { name: "主导航" });
+    const labels = within(nav)
       .getAllByRole("link")
       .map((link) => link.getAttribute("aria-label"))
       .filter(Boolean);
 
     expect(labels).toEqual(["辩论", "辩论历史", "AI 服务商", "搜索引擎", "通用设置"]);
-    expect(screen.getByRole("link", { name: "辩论" })).toHaveAttribute("href", "/debate");
-    expect(screen.getByRole("link", { name: "辩论历史" })).toHaveAttribute("href", "/history");
-    expect(screen.getByRole("link", { name: "AI 服务商" })).toHaveAttribute("href", "/providers");
-    expect(screen.getByRole("link", { name: "搜索引擎" })).toHaveAttribute("href", "/search-engines");
-    expect(screen.getByRole("link", { name: "通用设置" })).toHaveAttribute("href", "/settings");
-    expect(screen.getByRole("link", { name: "搜索引擎" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "辩论" })).toHaveAttribute("href", "/debate");
+    expect(within(nav).getByRole("link", { name: "辩论历史" })).toHaveAttribute("href", "/history");
+    expect(within(nav).getByRole("link", { name: "AI 服务商" })).toHaveAttribute("href", "/providers");
+    expect(within(nav).getByRole("link", { name: "搜索引擎" })).toHaveAttribute("href", "/search-engines");
+    expect(within(nav).getByRole("link", { name: "通用设置" })).toHaveAttribute("href", "/settings");
+    expect(within(nav).getByRole("link", { name: "搜索引擎" })).toHaveAttribute("aria-current", "page");
   });
 });

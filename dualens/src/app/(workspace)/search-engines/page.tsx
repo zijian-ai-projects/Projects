@@ -10,7 +10,7 @@ export default function SearchEnginesPage() {
       />
       <SectionCard
         title="搜索引擎列表"
-        description="先建立一级页面与页面标题，随后在同一文件里接入左右分栏配置结构。"
+        description="查看当前支持的搜索引擎，并为下一步配置中心建立统一入口。"
       >
         <div className="text-sm text-app-muted">Bing / 百度 / Google / Tavily</div>
       </SectionCard>

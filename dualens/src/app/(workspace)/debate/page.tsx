@@ -13,7 +13,7 @@ export default function DebatePage() {
   return (
     <div className="space-y-8 px-6 py-8 lg:px-10 lg:py-10">
       <PageHeader
-        title={uiLanguage === "en" ? "Debate" : "辩论页"}
+        title={uiLanguage === "en" ? "Debate" : "辩论"}
         description={
           uiLanguage === "en"
             ? "Configure the decision question, two roles, and model selection before launching a structured dual-agent debate."

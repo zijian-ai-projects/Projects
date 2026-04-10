@@ -1,22 +1,50 @@
 # Projects
 
-一个用于承载多个独立项目的总仓库。
+作品集式项目总仓库，用来集中展示多个独立项目。
 
-当前仓库采用一级目录收纳多个项目的方式，每个项目都在自己的子目录中维护代码、文档和运行配置。这样可以在同一个 GitHub 仓库里集中展示作品，同时保持每个项目的边界清晰。
+![Repository Type](https://img.shields.io/badge/Repo-Portfolio-blue)
+![Projects](https://img.shields.io/badge/Projects-1-0f766e)
+![Primary Project](https://img.shields.io/badge/Featured-Dualens-c2410c)
+![Status](https://img.shields.io/badge/Status-Active-1d4ed8)
 
-## 当前项目
+这里不把所有代码混在一起，而是按“一个项目一个一级目录”的方式组织。仓库根目录负责导航和展示，每个子项目各自维护源码、文档、依赖和运行说明。
 
-### Dualens / 两仪决
+## 仓库定位
 
-位置：[`dualens/`](./dualens)
+- 作为 GitHub 作品集入口，集中展示多个项目
+- 每个项目独立成目录，方便单独演示、运行和扩展
+- 根 README 负责概览，子项目 README 负责细节
 
-一个双智能体辅助决策系统。它会先搜索资料、提取共享证据，再让两个数字员工围绕同一问题进行多轮辩论，最后输出结构化决策总结。
+## Featured Project
 
-- 项目说明：[`dualens/README.md`](./dualens/README.md)
-- 技术栈：Next.js 15、React 19、TypeScript、Tailwind CSS、Vitest、Playwright
-- 适合展示方向：AI Product、Multi-Agent Workflow、Decision Support、RAG Debate
+> ### Dualens / 两仪决
+> 一个面向复杂决策场景的双智能体辅助决策系统。
+>
+> 它会先围绕用户问题搜索资料、抽取共享证据，再让两个数字员工基于同一组资料展开多轮辩论，最后输出结构化决策总结。
+>
+> `AI Product` `Multi-Agent Workflow` `Decision Support` `Retrieval-Augmented Debate`
+>
+> - 目录：[`dualens/`](./dualens)
+> - 项目说明：[`dualens/README.md`](./dualens/README.md)
+> - 技术栈：Next.js 15、React 19、TypeScript、Tailwind CSS、Vitest、Playwright
+> - 当前状态：可本地运行，已完成研究 -> 辩论 -> 总结闭环
 
-## 运行当前项目
+## Project Index
+
+| Project | What it is | Stack | Status | Link |
+| --- | --- | --- | --- | --- |
+| Dualens / 两仪决 | 双智能体辅助决策系统 | Next.js, React, TypeScript | Active | [`./dualens`](./dualens) |
+
+## Why this repo is structured this way
+
+这种结构适合作品集仓库，原因很直接：
+
+- 每个项目有清晰边界，不会因为互相影响把仓库搞乱
+- 后续新增项目时，不需要重做仓库结构
+- 面试、简历或项目展示时，别人一进仓库就能看见“总览 + 代表作”
+- 以后如果某个项目要单独拆出去，也比较容易迁移
+
+## Run the featured project
 
 ```bash
 cd dualens
@@ -30,34 +58,44 @@ pnpm dev
 http://localhost:3000
 ```
 
-## 仓库结构
+## Repository Layout
 
 ```text
 Projects/
   README.md
   dualens/
     README.md
-    src/
     docs/
+    src/
+    tests/
     package.json
 ```
 
-## 后续扩展方式
+## Add the next project
 
-后续如果要继续加入新项目，直接在仓库根目录新增一级子目录即可，例如：
+后续新增项目时，直接在仓库根目录新增一级目录即可，例如：
 
 ```text
 Projects/
   dualens/
-  another-project/
+  ai-notes/
   tool-experiment/
+  data-playground/
 ```
 
-每个项目各自维护：
+推荐每个项目目录至少包含：
 
-- 源码
-- README
-- 文档
-- 依赖与配置
+- `README.md`
+- `src/`
+- `docs/`（可选）
+- `package.json` 或对应语言/框架的项目配置
 
-这样仓库根目录只负责导航，不承担具体项目实现。
+## Suggested next slots
+
+如果你想把这个仓库继续做成更完整的作品集，下一批项目可以优先补这几类：
+
+- AI 工具型项目：强调效率、工作流、自动化
+- 数据或检索型项目：强调信息处理、搜索、结构化输出
+- 个人效率工具：强调产品感和落地能力
+
+这样你的仓库会形成更清晰的项目梯度，而不是只有一个方向。

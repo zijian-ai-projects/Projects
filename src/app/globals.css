@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  background:
+    radial-gradient(circle at top, rgba(191, 91, 44, 0.12), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(73, 106, 75, 0.1), transparent 28%),
+    #f7f2e8;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #151515;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.25)),
+    transparent;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    "Book Antiqua",
+    Georgia,
+    serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(191, 91, 44, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+details > summary {
+  list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+@layer components {
+  .session-alert {
+    @apply rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 shadow-sm;
+  }
+
+  .research-status {
+    @apply rounded-3xl border border-accent/15 bg-[linear-gradient(135deg,rgba(191,91,44,0.09),rgba(255,255,255,0.9))] p-5 shadow-[0_12px_30px_rgba(21,21,21,0.06)];
+  }
+
+.session-empty-state {
+    @apply rounded-2xl border border-dashed border-black/10 bg-white/70 px-4 py-3 text-sm leading-6 text-ink/60;
+  }
+
+  .surface {
+    @apply rounded-3xl border border-black/10 bg-[rgba(255,255,255,0.9)] shadow-[0_6px_18px_rgba(21,21,21,0.05)];
+  }
+
+  .surface-soft {
+    @apply rounded-3xl border border-black/[0.08] bg-[rgba(247,242,232,0.94)] shadow-[0_4px_12px_rgba(21,21,21,0.04)];
+  }
+}

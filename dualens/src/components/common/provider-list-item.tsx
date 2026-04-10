@@ -17,15 +17,27 @@ export function ProviderListItem({
   return (
     <button
       type="button"
-      aria-pressed={active}
+      role="radio"
+      aria-checked={active}
+      aria-label={name}
       onClick={onClick}
       className={[
-        "flex w-full items-center justify-between rounded-[22px] border px-4 py-4 text-left transition",
+        "relative flex w-full items-center justify-between rounded-[24px] border px-4 py-4 text-left transition",
         active
-          ? "border-black/12 bg-white shadow-[0_10px_24px_rgba(0,0,0,0.03)]"
-          : "border-transparent bg-transparent hover:border-black/8 hover:bg-white/70"
+          ? "border-black/14 bg-white shadow-[0_10px_24px_rgba(0,0,0,0.03)]"
+          : "border-black/8 bg-white/70 hover:border-black/12 hover:bg-white"
       ].join(" ")}
     >
+      <span
+        data-testid="selection-indicator"
+        aria-hidden="true"
+        className={[
+          "absolute right-4 top-4 flex h-5 w-5 items-center justify-center rounded-full border transition",
+          active ? "border-black bg-white" : "border-black/18 bg-white"
+        ].join(" ")}
+      >
+        <span className={["h-2 w-2 rounded-full", active ? "bg-black" : "bg-transparent"].join(" ")} />
+      </span>
       <span className="flex items-center gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-black/10 bg-white text-sm font-semibold text-black">
           {icon}

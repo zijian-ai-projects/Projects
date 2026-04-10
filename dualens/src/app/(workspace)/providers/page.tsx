@@ -55,9 +55,9 @@ export default function ProvidersPage() {
         title="AI 服务商"
         description="在统一设置中心中维护各模型提供方的 API Key、模型 ID 与 Endpoint。页面先完成正式配置结构，后续再接真实持久化。"
       />
-      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
         <SectionCard title="服务商列表" description="左侧用于切换当前正在编辑的服务商。">
-          <div className="space-y-3">
+          <div role="radiogroup" aria-label="AI 服务商" className="space-y-3">
             {providerItems.map((provider) => (
               <ProviderListItem
                 key={provider.id}

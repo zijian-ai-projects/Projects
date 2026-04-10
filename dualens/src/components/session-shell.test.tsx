@@ -3,10 +3,21 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { persistSessionHistory } = vi.hoisted(() => ({
+  persistSessionHistory: vi.fn(async () => ({ status: "written" as const }))
+}));
+
+vi.mock("@/lib/history-file-writer", () => ({
+  persistSessionHistory
+}));
+
 import { SessionShell, type SessionView } from "@/components/session-shell";
 
 afterEach(() => {
   vi.restoreAllMocks();
+  persistSessionHistory.mockClear();
+  window.localStorage.clear();
 });
 
 function setupUser() {
@@ -211,5 +222,56 @@ describe("SessionShell", () => {
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: "Stop debate" })).not.toBeInTheDocument();
     });
+  });
+
+  it("writes a snapshot after create and after the session reaches completion", async () => {
+    const user = setupUser();
+    const createSession = vi.fn().mockResolvedValueOnce(
+      buildSession({
+        id: "session-1",
+        stage: "research"
+      })
+    );
+    const continueSession = vi.fn().mockResolvedValueOnce(
+      buildSession({
+        id: "session-1",
+        stage: "complete",
+        summary: undefined
+      })
+    );
+
+    window.localStorage.setItem("dualens:selectedSearchEngineId", "google");
+
+    render(
+      <SessionShell
+        createSession={createSession}
+        continueSession={continueSession}
+        uiLanguage="en"
+      />
+    );
+
+    await user.type(
+      screen.getByLabelText("Decision question"),
+      "Should I move to Shanghai this year?"
+    );
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    await waitFor(() => {
+      expect(persistSessionHistory).toHaveBeenCalledTimes(2);
+    });
+
+    expect(persistSessionHistory).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        sessionId: "session-1",
+        question: "Should I move to Shanghai this year?",
+        model: "deepseek-chat",
+        searchEngine: "Google"
+      }),
+      expect.objectContaining({
+        id: "session-1",
+        stage: "research"
+      })
+    );
   });
 });

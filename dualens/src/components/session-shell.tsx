@@ -9,6 +9,11 @@ import { getLocalizedSideIdentityCopy } from "@/lib/side-identities";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/common/section-card";
 import { getUiCopy } from "@/lib/ui-copy";
+import {
+  persistSessionHistory,
+  type HistoryRecordMeta
+} from "@/lib/history-file-writer";
+import { loadSelectedSearchEngineLabel } from "@/lib/search-engine-preferences";
 import type {
   AppLanguage,
   BuiltInModel,
@@ -321,6 +326,9 @@ export function SessionShell({
   uiLanguage?: UiLanguage;
 }) {
   const [session, setSession] = useState<SessionView | null>(null);
+  const [historyMeta, setHistoryMeta] = useState<
+    (HistoryRecordMeta & { sessionId: string }) | null
+  >(null);
   const [errorKind, setErrorKind] = useState<SessionErrorKind | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [isStopping, setIsStopping] = useState(false);
@@ -330,7 +338,9 @@ export function SessionShell({
     : null;
   const handleSubmit = useCallback(
     async (input: SessionInput) => {
+      const createdAt = new Date().toISOString();
       setSession(null);
+      setHistoryMeta(null);
       setErrorKind(null);
       setErrorDetail(null);
       try {
@@ -342,6 +352,16 @@ export function SessionShell({
           model: input.model
         };
         const next = await createSession(payload);
+        setHistoryMeta({
+          sessionId: next.id,
+          createdAt,
+          question: input.question,
+          presetSelection: input.presetSelection,
+          firstSpeaker: input.firstSpeaker,
+          language: input.language,
+          model: input.model,
+          searchEngine: loadSelectedSearchEngineLabel()
+        });
         setSession(next);
       } catch (error) {
         setErrorDetail(error instanceof Error && error.message.trim().length > 0 ? error.message : null);
@@ -399,6 +419,14 @@ export function SessionShell({
       }
     };
   }, [continueSession, session]);
+
+  useEffect(() => {
+    if (!session || !historyMeta) {
+      return;
+    }
+
+    void persistSessionHistory(historyMeta, session);
+  }, [historyMeta, session]);
 
   return (
     <div className="space-y-8">

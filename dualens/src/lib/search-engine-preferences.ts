@@ -36,3 +36,9 @@ export function saveSelectedSearchEngineId(id: SearchEngineId) {
     // Ignore storage write failures and keep the UI functional.
   }
 }
+
+export function loadSelectedSearchEngineLabel() {
+  const selectedId = loadSelectedSearchEngineId();
+
+  return searchEngineItems.find((item) => item.id === selectedId)?.name ?? "Tavily";
+}

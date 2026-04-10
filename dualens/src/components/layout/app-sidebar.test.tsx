@@ -38,6 +38,11 @@ describe("workspace navigation copy", () => {
       .filter(Boolean);
 
     expect(labels).toEqual(["辩论", "辩论历史", "AI 服务商", "搜索引擎", "通用设置"]);
+    expect(screen.getByRole("link", { name: "辩论" })).toHaveAttribute("href", "/debate");
+    expect(screen.getByRole("link", { name: "辩论历史" })).toHaveAttribute("href", "/history");
+    expect(screen.getByRole("link", { name: "AI 服务商" })).toHaveAttribute("href", "/providers");
+    expect(screen.getByRole("link", { name: "搜索引擎" })).toHaveAttribute("href", "/search-engines");
+    expect(screen.getByRole("link", { name: "通用设置" })).toHaveAttribute("href", "/settings");
     expect(screen.getByRole("link", { name: "搜索引擎" })).toHaveAttribute("aria-current", "page");
   });
 });

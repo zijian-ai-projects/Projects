@@ -13,8 +13,8 @@ describe("SearchEnginesPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "搜索引擎" })).toBeInTheDocument();
     expect(screen.getByRole("radiogroup", { name: "搜索引擎" })).toBeInTheDocument();
 
-    const tavilyCard = screen.getByRole("radio", { name: "Tavily" });
-    const googleCard = screen.getByRole("radio", { name: "Google" });
+    const tavilyCard = screen.getByRole("radio", { name: /Tavily.*已配置/ });
+    const googleCard = screen.getByRole("radio", { name: /Google.*未配置/ });
 
     expect(tavilyCard).toHaveAttribute("aria-checked", "true");
     expect(googleCard).toHaveAttribute("aria-checked", "false");

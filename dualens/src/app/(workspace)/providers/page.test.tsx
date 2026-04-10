@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import ProvidersPage from "@/app/(workspace)/providers/page";
 
@@ -13,8 +13,8 @@ describe("ProvidersPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "AI 服务商" })).toBeInTheDocument();
     expect(screen.getByRole("radiogroup", { name: "AI 服务商" })).toBeInTheDocument();
 
-    const deepSeekCard = screen.getByRole("radio", { name: "DeepSeek" });
-    const openAiCard = screen.getByRole("radio", { name: "OpenAI" });
+    const deepSeekCard = screen.getByRole("radio", { name: /DeepSeek.*已配置/ });
+    const openAiCard = screen.getByRole("radio", { name: /OpenAI.*未配置/ });
 
     expect(deepSeekCard).toHaveAttribute("aria-checked", "true");
     expect(openAiCard).toHaveAttribute("aria-checked", "false");
@@ -34,5 +34,15 @@ describe("ProvidersPage", () => {
     expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://api.openai.com/v1");
     expect(screen.getByLabelText("模型 ID")).toHaveValue("");
     expect(screen.getByLabelText("API Key")).toBeInTheDocument();
+  });
+
+  it("prevents default Home and End key behavior inside the provider radiogroup", () => {
+    render(<ProvidersPage />);
+
+    const deepSeekCard = screen.getByRole("radio", { name: /DeepSeek.*已配置/ });
+    const doubaoCard = screen.getByRole("radio", { name: /豆包.*未配置/ });
+
+    expect(fireEvent.keyDown(deepSeekCard, { key: "Home" })).toBe(false);
+    expect(fireEvent.keyDown(doubaoCard, { key: "End" })).toBe(false);
   });
 });

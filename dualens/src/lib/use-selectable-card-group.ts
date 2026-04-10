@@ -56,11 +56,16 @@ export function useSelectableCardGroup<T extends string>({
       onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
         const targetId = getTargetId(event, id);
 
-        if (!targetId || targetId === id) {
+        if (!targetId) {
           return;
         }
 
         event.preventDefault();
+
+        if (targetId === id) {
+          return;
+        }
+
         selectAndFocus(targetId);
       },
       buttonRef: (node: HTMLButtonElement | null) => {

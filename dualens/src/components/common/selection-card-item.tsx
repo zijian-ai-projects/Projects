@@ -3,6 +3,7 @@ import type {
   ReactNode,
   RefCallback
 } from "react";
+import { useId } from "react";
 import { StatusTag } from "@/components/common/status-tag";
 
 export function SelectionCardItem({
@@ -24,13 +25,16 @@ export function SelectionCardItem({
   onKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
   buttonRef?: RefCallback<HTMLButtonElement>;
 }) {
+  const nameId = useId();
+  const statusId = useId();
+
   return (
     <button
       ref={buttonRef}
       type="button"
       role="radio"
       aria-checked={active}
-      aria-label={name}
+      aria-labelledby={`${nameId} ${statusId}`}
       tabIndex={tabIndex}
       onClick={onClick}
       onKeyDown={onKeyDown}
@@ -55,11 +59,13 @@ export function SelectionCardItem({
           {icon}
         </span>
         <span>
-          <span className="block text-sm font-medium text-black">{name}</span>
+          <span id={nameId} className="block text-sm font-medium text-black">{name}</span>
           <span className="mt-1 block text-xs text-black/45">{configured ? "已接入" : "未配置"}</span>
         </span>
       </span>
-      <StatusTag tone={configured ? "success" : "neutral"}>{configured ? "已配置" : "未配置"}</StatusTag>
+      <StatusTag tone={configured ? "success" : "neutral"}>
+        <span id={statusId}>{configured ? "已配置" : "未配置"}</span>
+      </StatusTag>
     </button>
   );
 }

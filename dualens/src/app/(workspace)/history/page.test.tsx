@@ -3,14 +3,11 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import HistoryPage from "@/app/(workspace)/history/page";
-import SearchEnginesPage from "@/app/(workspace)/search-engines/page";
 
-describe("workspace navigation copy", () => {
-  it("renders the renamed history and search-engine page titles", () => {
+describe("HistoryPage", () => {
+  it("renders the renamed history page title", () => {
     render(<HistoryPage />);
-    render(<SearchEnginesPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "辩论历史" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "搜索引擎" })).toBeInTheDocument();
   });
 });

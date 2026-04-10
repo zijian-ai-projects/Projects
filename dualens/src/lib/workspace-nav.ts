@@ -8,7 +8,7 @@ export const workspaceNavItems: WorkspaceNavItem[] = [
   {
     href: "/debate",
     label: "辩论",
-    description: "配置问题与双角色辩论"
+    description: "配置问题、角色与模型"
   },
   {
     href: "/history",
@@ -18,7 +18,7 @@ export const workspaceNavItems: WorkspaceNavItem[] = [
   {
     href: "/providers",
     label: "AI 服务商",
-    description: "管理大模型接入配置"
+    description: "管理模型接入配置"
   },
   {
     href: "/search-engines",
@@ -28,6 +28,6 @@ export const workspaceNavItems: WorkspaceNavItem[] = [
   {
     href: "/settings",
     label: "通用设置",
-    description: "设置历史记录保存目录"
+    description: "调整默认偏好与策略"
   }
 ];

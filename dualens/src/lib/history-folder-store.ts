@@ -134,7 +134,16 @@ export async function loadHistoryFolderState(): Promise<HistoryFolderState> {
     return formatHistoryFolderState({ supported: false });
   }
 
-  const handle = await readSavedHandleFromIndexedDb();
+  let handle: FileSystemDirectoryHandle | null = null;
+
+  try {
+    handle = await readSavedHandleFromIndexedDb();
+  } catch {
+    return {
+      status: "needs-permission",
+      folderName: null
+    };
+  }
 
   if (!handle) {
     return formatHistoryFolderState({
@@ -169,7 +178,16 @@ export async function chooseHistoryFolder(): Promise<HistoryFolderState> {
   }
 
   const permission = await handle.requestPermission({ mode: "readwrite" });
-  await saveHandleToIndexedDb(handle);
+
+  try {
+    await saveHandleToIndexedDb(handle);
+  } catch {
+    return formatHistoryFolderState({
+      supported: true,
+      handle,
+      permission
+    });
+  }
 
   return formatHistoryFolderState({
     supported: true,

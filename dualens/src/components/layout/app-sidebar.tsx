@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { workspaceNavItems } from "@/lib/workspace-nav";
+import { useAppPreferences } from "@/lib/app-preferences";
+import { getWorkspaceCopy } from "@/lib/workspace-copy";
+
+const navItems = [
+  { href: "/debate", key: "debate" },
+  { href: "/history", key: "history" },
+  { href: "/providers", key: "providers" },
+  { href: "/search-engines", key: "searchEngines" },
+  { href: "/settings", key: "settings" }
+] as const;
 
 function TaijiMark() {
   return (
@@ -37,12 +46,14 @@ function NavGlyph({ active }: { active: boolean }) {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { language } = useAppPreferences();
+  const copy = getWorkspaceCopy(language);
 
   return (
     <div className="flex h-full flex-col px-5 py-6">
       <Link
         href="/debate"
-        className="rounded-[28px] border border-black/8 bg-white px-4 py-4 transition hover:border-black/12"
+        className="rounded-[28px] px-4 py-4 transition hover:bg-white/55"
       >
         <div className="flex items-center gap-3">
           <TaijiMark />
@@ -52,12 +63,13 @@ export function AppSidebar() {
           </div>
         </div>
         <p className="mt-4 text-sm leading-6 text-black/58">
-          围绕同一问题组织两种立场，让判断过程保持可见与平衡。
+          {copy.brandTagline}
         </p>
       </Link>
 
-      <nav aria-label="主导航" className="mt-8 space-y-2">
-        {workspaceNavItems.map((item) => {
+      <nav aria-label={copy.navAriaLabel} className="mt-8 space-y-2">
+        {navItems.map((item) => {
+          const itemCopy = copy.nav[item.key];
           const isActive =
             pathname === item.href || (item.href !== "/debate" && pathname.startsWith(item.href));
 
@@ -65,7 +77,7 @@ export function AppSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              aria-label={item.label}
+              aria-label={itemCopy.label}
               aria-current={isActive ? "page" : undefined}
               className={[
                 "flex items-start gap-3 rounded-[24px] border px-3 py-3 transition",
@@ -76,8 +88,8 @@ export function AppSidebar() {
             >
               <NavGlyph active={isActive} />
               <span className="min-w-0">
-                <span className="block text-sm font-medium text-inherit">{item.label}</span>
-                <span className="mt-1 block text-xs leading-5 text-black/45">{item.description}</span>
+                <span className="block text-sm font-medium text-inherit">{itemCopy.label}</span>
+                <span className="mt-1 block text-xs leading-5 text-black/45">{itemCopy.description}</span>
               </span>
             </Link>
           );
@@ -85,9 +97,9 @@ export function AppSidebar() {
       </nav>
 
       <div className="mt-auto rounded-[24px] border border-black/8 bg-white/80 px-4 py-4">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-black/38">Workspace</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-black/38">{copy.workspaceLabel}</p>
         <p className="mt-2 text-sm leading-6 text-black/58">
-          当前先完成应用壳层与导航骨架，右侧页面将逐步接入完整产品结构。
+          {copy.workspaceDescription}
         </p>
       </div>
     </div>

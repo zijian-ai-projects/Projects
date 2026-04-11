@@ -7,6 +7,23 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SearchEnginesPage from "@/app/(workspace)/search-engines/page";
+import { APP_LANGUAGE_STORAGE_KEY, AppPreferencesProvider } from "@/lib/app-preferences";
+
+function renderSearchEnginesPage() {
+  render(
+    <AppPreferencesProvider>
+      <SearchEnginesPage />
+    </AppPreferencesProvider>
+  );
+}
+
+function renderSearchEnginesPageMarkup() {
+  return (
+    <AppPreferencesProvider>
+      <SearchEnginesPage />
+    </AppPreferencesProvider>
+  );
+}
 
 describe("SearchEnginesPage", () => {
   beforeEach(() => {
@@ -15,7 +32,7 @@ describe("SearchEnginesPage", () => {
 
   it("renders search engines with the same radio-like selection pattern", async () => {
     const user = userEvent.setup();
-    render(<SearchEnginesPage />);
+    renderSearchEnginesPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "搜索引擎" })).toBeInTheDocument();
     expect(screen.getByRole("radiogroup", { name: "搜索引擎" })).toBeInTheDocument();
@@ -40,7 +57,7 @@ describe("SearchEnginesPage", () => {
     const user = userEvent.setup();
     window.localStorage.setItem("dualens:selectedSearchEngineId", "google");
 
-    render(<SearchEnginesPage />);
+    renderSearchEnginesPage();
 
     const googleCard = screen.getByRole("radio", { name: /Google.*未配置/ });
     const bingCard = screen.getByRole("radio", { name: /Bing.*未配置/ });
@@ -65,7 +82,7 @@ describe("SearchEnginesPage", () => {
         value: undefined
       });
 
-      const serverMarkup = renderToString(<SearchEnginesPage />);
+      const serverMarkup = renderToString(renderSearchEnginesPageMarkup());
 
       if (windowDescriptor) {
         Object.defineProperty(globalThis, "window", windowDescriptor);
@@ -77,7 +94,7 @@ describe("SearchEnginesPage", () => {
       let root: ReturnType<typeof hydrateRoot> | undefined;
 
       await act(async () => {
-        root = hydrateRoot(container, <SearchEnginesPage />);
+        root = hydrateRoot(container, renderSearchEnginesPageMarkup());
       });
 
       await waitFor(() => {
@@ -97,5 +114,16 @@ describe("SearchEnginesPage", () => {
         Object.defineProperty(globalThis, "window", windowDescriptor);
       }
     }
+  });
+
+  it("uses the stored English global language for page chrome", async () => {
+    window.localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, "en");
+
+    renderSearchEnginesPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Search engines" })).toBeInTheDocument();
+    });
+    expect(screen.getByText("Search engine list")).toBeInTheDocument();
   });
 });

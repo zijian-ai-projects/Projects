@@ -1,14 +1,27 @@
 import "@testing-library/jest-dom/vitest";
 
 import userEvent from "@testing-library/user-event";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import ProvidersPage from "@/app/(workspace)/providers/page";
+import { APP_LANGUAGE_STORAGE_KEY, AppPreferencesProvider } from "@/lib/app-preferences";
+
+function renderProvidersPage() {
+  render(
+    <AppPreferencesProvider>
+      <ProvidersPage />
+    </AppPreferencesProvider>
+  );
+}
 
 describe("ProvidersPage", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it("lets the provider card selection drive the right panel", async () => {
     const user = userEvent.setup();
-    render(<ProvidersPage />);
+    renderProvidersPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "AI 服务商" })).toBeInTheDocument();
     expect(screen.getByRole("radiogroup", { name: "AI 服务商" })).toBeInTheDocument();
@@ -37,12 +50,23 @@ describe("ProvidersPage", () => {
   });
 
   it("prevents default Home and End key behavior inside the provider radiogroup", () => {
-    render(<ProvidersPage />);
+    renderProvidersPage();
 
     const deepSeekCard = screen.getByRole("radio", { name: /DeepSeek.*已配置/ });
     const doubaoCard = screen.getByRole("radio", { name: /豆包.*未配置/ });
 
     expect(fireEvent.keyDown(deepSeekCard, { key: "Home" })).toBe(false);
     expect(fireEvent.keyDown(doubaoCard, { key: "End" })).toBe(false);
+  });
+
+  it("uses the stored English global language for page chrome", async () => {
+    window.localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, "en");
+
+    renderProvidersPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "AI providers" })).toBeInTheDocument();
+    });
+    expect(screen.getByText("Provider list")).toBeInTheDocument();
   });
 });

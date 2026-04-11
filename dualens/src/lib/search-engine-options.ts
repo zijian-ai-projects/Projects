@@ -7,7 +7,10 @@ export const searchEngineItems = [
     configured: false,
     icon: "B",
     endpoint: "https://api.bing.microsoft.com",
-    helperText: "填写 Bing Search API 的 Key、Custom Config 或其他必需参数。"
+    helperText: {
+      en: "Enter the Bing Search API key, custom config, or other required parameters.",
+      "zh-CN": "填写 Bing Search API 的 Key、Custom Config 或其他必需参数。"
+    }
   },
   {
     id: "baidu",
@@ -15,7 +18,10 @@ export const searchEngineItems = [
     configured: false,
     icon: "百",
     endpoint: "https://aip.baidubce.com",
-    helperText: "填写百度搜索接入参数，例如 App ID、Secret Key 与检索入口。"
+    helperText: {
+      en: "Enter Baidu search access parameters such as app id, secret key, and retrieval entry.",
+      "zh-CN": "填写百度搜索接入参数，例如 App ID、Secret Key 与检索入口。"
+    }
   },
   {
     id: "google",
@@ -23,7 +29,10 @@ export const searchEngineItems = [
     configured: false,
     icon: "G",
     endpoint: "https://customsearch.googleapis.com",
-    helperText: "填写 Google Custom Search API Key 与搜索引擎 CX。"
+    helperText: {
+      en: "Enter the Google Custom Search API key and search engine CX.",
+      "zh-CN": "填写 Google Custom Search API Key 与搜索引擎 CX。"
+    }
   },
   {
     id: "tavily",
@@ -31,6 +40,9 @@ export const searchEngineItems = [
     configured: true,
     icon: "T",
     endpoint: "https://api.tavily.com/search",
-    helperText: "填写 Tavily API Key 与所需检索参数，作为当前默认搜索引擎。"
+    helperText: {
+      en: "Enter the Tavily API key and retrieval parameters for the current default search engine.",
+      "zh-CN": "填写 Tavily API Key 与所需检索参数，作为当前默认搜索引擎。"
+    }
   }
 ] as const;

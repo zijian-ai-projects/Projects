@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/common/page-header";
 import { SectionCard } from "@/components/common/section-card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { useAppPreferences } from "@/lib/app-preferences";
+import { getWorkspaceCopy } from "@/lib/workspace-copy";
 
 const historyRecords = [
   {
@@ -35,8 +37,11 @@ const historyRecords = [
 ];
 
 export default function HistoryPage() {
+  const { language } = useAppPreferences();
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const copy = getWorkspaceCopy(language);
+  const historyCopy = copy.history;
 
   const visibleRecords = useMemo(
     () =>
@@ -53,27 +58,27 @@ export default function HistoryPage() {
   return (
     <div className="space-y-8 px-6 py-8 lg:px-10 lg:py-10">
       <PageHeader
-        title="辩论历史"
-        description="集中管理既往问题、模型选择、双方角色设定与会话状态，让重新查看和复盘成为标准流程。"
+        title={copy.pages.history.title}
+        description={copy.pages.history.description}
       />
-      <SectionCard title="检索与筛选" description="先按问题搜索，再按状态缩小记录范围。">
+      <SectionCard title={historyCopy.filterTitle} description={historyCopy.filterDescription}>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
           <label className="space-y-2 text-sm font-medium text-app-strong">
-            <span>搜索历史</span>
+            <span>{historyCopy.searchLabel}</span>
             <Input
-              aria-label="搜索历史"
+              aria-label={historyCopy.searchLabel}
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="搜索问题标题、模型或角色设定"
+              placeholder={historyCopy.searchPlaceholder}
             />
           </label>
           <label className="space-y-2 text-sm font-medium text-app-strong">
-            <span>状态</span>
+            <span>{historyCopy.statusLabel}</span>
             <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="all">全部状态</option>
-              <option value="complete">已完成</option>
-              <option value="running">进行中</option>
-              <option value="failed">失败</option>
+              <option value="all">{historyCopy.allStatus}</option>
+              <option value="complete">{historyCopy.complete}</option>
+              <option value="running">{historyCopy.running}</option>
+              <option value="failed">{historyCopy.failed}</option>
             </Select>
           </label>
         </div>
@@ -88,6 +93,7 @@ export default function HistoryPage() {
             model={record.model}
             roleSummary={record.roleSummary}
             status={record.status}
+            copy={historyCopy}
           />
         ))}
       </div>

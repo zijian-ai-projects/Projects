@@ -4,23 +4,28 @@ type SelectableCardItem<T extends string> = {
   id: T;
 };
 
-export function useSelectableCardGroup<T extends string>({
+type SelectableCardItemId<TItems extends readonly SelectableCardItem<string>[]> =
+  TItems[number]["id"];
+
+export function useSelectableCardGroup<const TItems extends readonly SelectableCardItem<string>[]>({
   items,
   selectedId,
   onSelect
 }: {
-  items: readonly SelectableCardItem<T>[];
-  selectedId: T;
-  onSelect(id: T): void;
+  items: TItems;
+  selectedId: SelectableCardItemId<TItems>;
+  onSelect(id: SelectableCardItemId<TItems>): void;
 }) {
+  type ItemId = SelectableCardItemId<TItems>;
+
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  function selectAndFocus(id: T) {
+  function selectAndFocus(id: ItemId) {
     onSelect(id);
     itemRefs.current[id]?.focus();
   }
 
-  function getAdjacentId(currentId: T, direction: "previous" | "next") {
+  function getAdjacentId(currentId: ItemId, direction: "previous" | "next") {
     const currentIndex = items.findIndex((item) => item.id === currentId);
 
     if (currentIndex === -1) {
@@ -32,7 +37,7 @@ export function useSelectableCardGroup<T extends string>({
     return items[nextIndex]?.id ?? currentId;
   }
 
-  function getTargetId(event: KeyboardEvent<HTMLButtonElement>, currentId: T) {
+  function getTargetId(event: KeyboardEvent<HTMLButtonElement>, currentId: ItemId) {
     switch (event.key) {
       case "ArrowDown":
       case "ArrowRight":
@@ -49,7 +54,7 @@ export function useSelectableCardGroup<T extends string>({
     }
   }
 
-  function getItemProps(id: T) {
+  function getItemProps(id: ItemId) {
     return {
       tabIndex: selectedId === id ? 0 : -1,
       onClick: () => onSelect(id),

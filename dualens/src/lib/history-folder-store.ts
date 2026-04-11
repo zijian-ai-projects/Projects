@@ -23,6 +23,19 @@ type DirectoryPickerWindow = Window &
     }) => Promise<FileSystemDirectoryHandle>;
   };
 
+type DirectoryPermissionDescriptor = {
+  mode?: "read" | "readwrite";
+};
+
+type PermissionedDirectoryHandle = FileSystemDirectoryHandle & {
+  queryPermission(
+    descriptor?: DirectoryPermissionDescriptor
+  ): Promise<PermissionState>;
+  requestPermission(
+    descriptor?: DirectoryPermissionDescriptor
+  ): Promise<PermissionState>;
+};
+
 const DB_NAME = "dualens-history";
 const STORE_NAME = "settings";
 const HANDLE_KEY = "history-folder-handle";
@@ -73,6 +86,30 @@ function supportsHistoryFolderAccess() {
     typeof window.indexedDB !== "undefined" &&
     typeof (window as DirectoryPickerWindow).showDirectoryPicker === "function"
   );
+}
+
+async function queryDirectoryPermission(
+  handle: FileSystemDirectoryHandle
+): Promise<PermissionState | "prompt"> {
+  const permissionHandle = handle as Partial<PermissionedDirectoryHandle>;
+
+  if (typeof permissionHandle.queryPermission !== "function") {
+    return "prompt";
+  }
+
+  return await permissionHandle.queryPermission({ mode: "readwrite" });
+}
+
+async function requestDirectoryPermission(
+  handle: FileSystemDirectoryHandle
+): Promise<PermissionState | "prompt"> {
+  const permissionHandle = handle as Partial<PermissionedDirectoryHandle>;
+
+  if (typeof permissionHandle.requestPermission !== "function") {
+    return "prompt";
+  }
+
+  return await permissionHandle.requestPermission({ mode: "readwrite" });
 }
 
 async function openHistoryDb(): Promise<IDBDatabase> {
@@ -152,7 +189,7 @@ export async function loadHistoryFolderState(): Promise<HistoryFolderState> {
     });
   }
 
-  const permission = await handle.queryPermission({ mode: "readwrite" });
+  const permission = await queryDirectoryPermission(handle);
 
   return formatHistoryFolderState({
     supported: true,
@@ -177,7 +214,7 @@ export async function chooseHistoryFolder(): Promise<HistoryFolderState> {
     });
   }
 
-  const permission = await handle.requestPermission({ mode: "readwrite" });
+  const permission = await requestDirectoryPermission(handle);
 
   try {
     await saveHandleToIndexedDb(handle);

@@ -1,6 +1,13 @@
 import type { SessionInput, SessionView } from "@/components/session-shell";
 import { loadHistoryFolderState } from "@/lib/history-folder-store";
 
+type WritableFileHandle = FileSystemFileHandle & {
+  createWritable(): Promise<{
+    write(contents: string): Promise<void>;
+    close(): Promise<void>;
+  }>;
+};
+
 export type HistoryRecordMeta = Pick<
   SessionInput,
   "question" | "presetSelection" | "firstSpeaker" | "language" | "model"
@@ -56,9 +63,9 @@ export async function persistSessionHistory(
 
   try {
     const fileName = buildHistoryFileName(meta.sessionId, meta.createdAt);
-    const fileHandle = await folderState.handle.getFileHandle(fileName, {
+    const fileHandle = (await folderState.handle.getFileHandle(fileName, {
       create: true
-    });
+    })) as WritableFileHandle;
     const writable = await fileHandle.createWritable();
 
     await writable.write(

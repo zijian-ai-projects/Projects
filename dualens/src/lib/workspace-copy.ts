@@ -7,6 +7,8 @@ export const WORKSPACE_COPY = {
     workspaceLabel: "Workspace",
     workspaceDescription:
       "Global preferences and debate sessions stay aligned across the workspace.",
+    collapseSidebar: "Collapse menu",
+    expandSidebar: "Expand menu",
     nav: {
       debate: {
         label: "Debate",
@@ -142,6 +144,8 @@ export const WORKSPACE_COPY = {
     workspaceLabel: "Workspace",
     workspaceDescription:
       "全局偏好与辩论会话在同一工作区内保持一致。",
+    collapseSidebar: "收起菜单",
+    expandSidebar: "展开菜单",
     nav: {
       debate: {
         label: "辩论",

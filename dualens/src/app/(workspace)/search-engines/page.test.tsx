@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import userEvent from "@testing-library/user-event";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { act } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
@@ -35,10 +35,15 @@ describe("SearchEnginesPage", () => {
     renderSearchEnginesPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "搜索引擎" })).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "搜索引擎" })).toBeInTheDocument();
+    const engineList = screen.getByRole("radiogroup", { name: "搜索引擎" });
 
-    const tavilyCard = screen.getByRole("radio", { name: /Tavily.*已配置/ });
-    const googleCard = screen.getByRole("radio", { name: /Google.*未配置/ });
+    expect(engineList).toBeInTheDocument();
+    expect(within(engineList).queryByText("已配置")).not.toBeInTheDocument();
+    expect(within(engineList).queryByText("未配置")).not.toBeInTheDocument();
+    expect(within(engineList).queryByText("已接入")).not.toBeInTheDocument();
+
+    const tavilyCard = screen.getByRole("radio", { name: "Tavily" });
+    const googleCard = screen.getByRole("radio", { name: "Google" });
 
     expect(tavilyCard).toHaveAttribute("aria-checked", "true");
     expect(googleCard).toHaveAttribute("aria-checked", "false");
@@ -59,8 +64,8 @@ describe("SearchEnginesPage", () => {
 
     renderSearchEnginesPage();
 
-    const googleCard = screen.getByRole("radio", { name: /Google.*未配置/ });
-    const bingCard = screen.getByRole("radio", { name: /Bing.*未配置/ });
+    const googleCard = screen.getByRole("radio", { name: "Google" });
+    const bingCard = screen.getByRole("radio", { name: "Bing" });
 
     expect(googleCard).toHaveAttribute("aria-checked", "true");
 
@@ -98,7 +103,7 @@ describe("SearchEnginesPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByRole("radio", { name: /Google.*未配置/ })).toHaveAttribute(
+        expect(screen.getByRole("radio", { name: "Google" })).toHaveAttribute(
           "aria-checked",
           "true"
         );

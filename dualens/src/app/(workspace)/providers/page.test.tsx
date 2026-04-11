@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import userEvent from "@testing-library/user-event";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import ProvidersPage from "@/app/(workspace)/providers/page";
 import { APP_LANGUAGE_STORAGE_KEY, AppPreferencesProvider } from "@/lib/app-preferences";
@@ -24,10 +24,15 @@ describe("ProvidersPage", () => {
     renderProvidersPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "AI 服务商" })).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "AI 服务商" })).toBeInTheDocument();
+    const providerList = screen.getByRole("radiogroup", { name: "AI 服务商" });
 
-    const deepSeekCard = screen.getByRole("radio", { name: /DeepSeek.*已配置/ });
-    const openAiCard = screen.getByRole("radio", { name: /OpenAI.*未配置/ });
+    expect(providerList).toBeInTheDocument();
+    expect(within(providerList).queryByText("已配置")).not.toBeInTheDocument();
+    expect(within(providerList).queryByText("未配置")).not.toBeInTheDocument();
+    expect(within(providerList).queryByText("已接入")).not.toBeInTheDocument();
+
+    const deepSeekCard = screen.getByRole("radio", { name: "DeepSeek" });
+    const openAiCard = screen.getByRole("radio", { name: "OpenAI" });
 
     expect(deepSeekCard).toHaveAttribute("aria-checked", "true");
     expect(openAiCard).toHaveAttribute("aria-checked", "false");
@@ -52,8 +57,8 @@ describe("ProvidersPage", () => {
   it("prevents default Home and End key behavior inside the provider radiogroup", () => {
     renderProvidersPage();
 
-    const deepSeekCard = screen.getByRole("radio", { name: /DeepSeek.*已配置/ });
-    const doubaoCard = screen.getByRole("radio", { name: /豆包.*未配置/ });
+    const deepSeekCard = screen.getByRole("radio", { name: "DeepSeek" });
+    const doubaoCard = screen.getByRole("radio", { name: "豆包" });
 
     expect(fireEvent.keyDown(deepSeekCard, { key: "Home" })).toBe(false);
     expect(fireEvent.keyDown(doubaoCard, { key: "End" })).toBe(false);

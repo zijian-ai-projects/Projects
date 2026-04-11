@@ -59,7 +59,6 @@ export default function SearchEnginesPage() {
                 <SelectionCardItem
                   key={engine.id}
                   name={engine.name}
-                  configured={engine.configured}
                   active={engine.id === selectedEngineId}
                   icon={engine.icon}
                   tabIndex={itemProps.tabIndex}

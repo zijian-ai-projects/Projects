@@ -88,7 +88,6 @@ export default function ProvidersPage() {
                 <SelectionCardItem
                   key={provider.id}
                   name={provider.name}
-                  configured={provider.configured}
                   active={provider.id === selectedProviderId}
                   icon={provider.icon}
                   tabIndex={itemProps.tabIndex}

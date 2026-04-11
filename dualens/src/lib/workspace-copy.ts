@@ -3,7 +3,7 @@ import type { UiLanguage } from "@/lib/types";
 export const WORKSPACE_COPY = {
   en: {
     navAriaLabel: "Main navigation",
-    brandTagline: "One question, two sides, visible evidence.",
+    brandTagline: "One question, two lenses, visible evidence",
     workspaceLabel: "Workspace",
     workspaceDescription:
       "Global preferences and debate sessions stay aligned across the workspace.",

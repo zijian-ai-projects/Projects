@@ -74,7 +74,7 @@ describe("workspace navigation copy", () => {
       "aria-current",
       "page"
     );
-    expect(screen.getByText("One question, two sides, visible evidence.")).toBeInTheDocument();
+    expect(screen.getByText("One question, two lenses, visible evidence")).toBeInTheDocument();
   });
 
   it("integrates the brand block and marks the taiji for slow counterclockwise rotation", () => {
@@ -85,5 +85,6 @@ describe("workspace navigation copy", () => {
     expect(taijiMark).toHaveClass("animate-taiji-counterclockwise");
     expect(brandLink).not.toHaveClass("border");
     expect(brandLink).not.toHaveClass("bg-white");
+    expect(brandLink?.firstElementChild).toHaveClass("justify-center");
   });
 });

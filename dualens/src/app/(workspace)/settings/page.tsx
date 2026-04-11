@@ -90,10 +90,7 @@ export default function SettingsPage() {
         title={settingsCopy.languageTitle}
         description={settingsCopy.languageDescription}
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl text-sm leading-7 text-app-muted">
-            {settingsCopy.languageDescription}
-          </div>
+        <div className="flex justify-start lg:justify-end">
           <div
             aria-label={settingsCopy.languageTitle}
             className="inline-flex w-fit items-center rounded-full border border-black/8 bg-black/[0.02] p-1"

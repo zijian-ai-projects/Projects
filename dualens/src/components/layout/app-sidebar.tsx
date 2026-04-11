@@ -60,7 +60,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
           collapsed ? "flex justify-center px-0" : "px-4"
         ].join(" ")}
       >
-        <div className={["flex items-center gap-3", collapsed ? "justify-center" : ""].join(" ")}>
+        <div className={["flex items-center gap-3", collapsed ? "justify-center" : "justify-center pl-2"].join(" ")}>
           <TaijiMark />
           {collapsed ? null : (
             <div className="min-w-0">

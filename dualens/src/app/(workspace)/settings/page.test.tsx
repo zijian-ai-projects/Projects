@@ -43,6 +43,7 @@ describe("SettingsPage", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "通用设置" })).toBeInTheDocument();
     expect(screen.getByText("语言设置")).toBeInTheDocument();
+    expect(screen.getAllByText("控制工作区界面、新建 agent 发言语言和证据展示语言；已保存历史保持创建时语言不变。")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "中文" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
     expect(screen.getByText("辩论历史保存文件夹")).toBeInTheDocument();

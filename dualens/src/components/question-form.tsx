@@ -28,21 +28,29 @@ function QuestionFormImpl({
   onSubmit,
   uiLanguage: controlledUiLanguage,
   questionValue,
-  onQuestionChange
+  onQuestionChange,
+  presetSelectionValue,
+  onPresetSelectionChange,
+  firstSpeakerValue,
+  onFirstSpeakerChange
 }: {
   onSubmit(input: SessionInput): Promise<void>;
   uiLanguage?: UiLanguage;
   questionValue?: string;
   onQuestionChange?: (question: string) => void;
+  presetSelectionValue?: SessionInput["presetSelection"];
+  onPresetSelectionChange?: (presetSelection: SessionInput["presetSelection"]) => void;
+  firstSpeakerValue?: SpeakerSideKey;
+  onFirstSpeakerChange?: (firstSpeaker: SpeakerSideKey) => void;
 }) {
   const [localQuestion, setLocalQuestion] = useState("");
-  const [temperamentPairId, setTemperamentPairId] = useState<TemperamentPairId>(
+  const [localTemperamentPairId, setLocalTemperamentPairId] = useState<TemperamentPairId>(
     presetLibrary.TEMPERAMENT_PAIRS[0]?.id ?? "cautious-aggressive"
   );
-  const [luminaTemperament, setLuminaTemperament] = useState<TemperamentOption>(
+  const [localLuminaTemperament, setLocalLuminaTemperament] = useState<TemperamentOption>(
     presetLibrary.TEMPERAMENT_PAIRS[0]?.options[0] ?? "cautious"
   );
-  const [firstSpeaker, setFirstSpeaker] = useState<SpeakerSideKey>("lumina");
+  const [localFirstSpeaker, setLocalFirstSpeaker] = useState<SpeakerSideKey>("lumina");
   const [selectedModelLabel, setSelectedModelLabel] = useState<string | null>(null);
   const [isSelectedModelConfigured, setIsSelectedModelConfigured] = useState(false);
   const [selectedSearchEngineLabel, setSelectedSearchEngineLabel] = useState<string | null>(null);
@@ -52,6 +60,33 @@ function QuestionFormImpl({
   const [questionError, setQuestionError] = useState(false);
   const uiLanguage = controlledUiLanguage ?? "zh-CN";
   const uiCopy = getUiCopy(uiLanguage);
+  const question = questionValue ?? localQuestion;
+  const setQuestion = onQuestionChange ?? setLocalQuestion;
+  const localPresetSelection = {
+    pairId: localTemperamentPairId,
+    luminaTemperament: localLuminaTemperament
+  } as SessionInput["presetSelection"];
+  const presetSelection = presetSelectionValue ?? localPresetSelection;
+  const temperamentPairId = presetSelection.pairId;
+  const luminaTemperament = presetSelection.luminaTemperament as TemperamentOption;
+  const firstSpeaker = firstSpeakerValue ?? localFirstSpeaker;
+  const setPresetSelection = (nextPresetSelection: SessionInput["presetSelection"]) => {
+    if (onPresetSelectionChange) {
+      onPresetSelectionChange(nextPresetSelection);
+      return;
+    }
+
+    setLocalTemperamentPairId(nextPresetSelection.pairId);
+    setLocalLuminaTemperament(nextPresetSelection.luminaTemperament as TemperamentOption);
+  };
+  const setFirstSpeaker = (nextFirstSpeaker: SpeakerSideKey) => {
+    if (onFirstSpeakerChange) {
+      onFirstSpeakerChange(nextFirstSpeaker);
+      return;
+    }
+
+    setLocalFirstSpeaker(nextFirstSpeaker);
+  };
   const selectedPair =
     presetLibrary.getTemperamentPairById(temperamentPairId) ?? presetLibrary.TEMPERAMENT_PAIRS[0];
   const selectedLuminaLabel = presetLibrary.getLocalizedTemperamentOptionLabel(
@@ -67,8 +102,6 @@ function QuestionFormImpl({
   const vigilaIdentity = getLocalizedSideIdentityCopy("vigila", uiLanguage);
   const tooShortQuestionMessage =
     uiLanguage === "en" ? "Question must be at least 10 characters." : "问题至少需要 10 个字符。";
-  const question = questionValue ?? localQuestion;
-  const setQuestion = onQuestionChange ?? setLocalQuestion;
   const sectionCopy =
     uiLanguage === "en"
       ? {
@@ -109,7 +142,10 @@ function QuestionFormImpl({
   }, []);
 
   const handleSwapTemperament = () => {
-    setLuminaTemperament(presetLibrary.getOppositeTemperament(selectedPair, luminaTemperament));
+    setPresetSelection({
+      pairId: selectedPair.id,
+      luminaTemperament: presetLibrary.getOppositeTemperament(selectedPair, luminaTemperament)
+    } as SessionInput["presetSelection"]);
     setIsSwapActive((current) => !current);
   };
 
@@ -119,15 +155,17 @@ function QuestionFormImpl({
       return;
     }
 
-    setTemperamentPairId(pair.id);
-    setLuminaTemperament(pair.options[0]);
+    setPresetSelection({
+      pairId: pair.id,
+      luminaTemperament: pair.options[0]
+    } as SessionInput["presetSelection"]);
   };
 
   const getOrderLabel = (side: SpeakerSideKey) =>
     firstSpeaker === side ? uiCopy.speakingOrderFirst : uiCopy.speakingOrderSecond;
 
   const toggleSpeakingOrder = () => {
-    setFirstSpeaker((current) => (current === "lumina" ? "vigila" : "lumina"));
+    setFirstSpeaker(firstSpeaker === "lumina" ? "vigila" : "lumina");
   };
   const modelSummary = isSelectedModelConfigured && selectedModelLabel
     ? selectedModelLabel

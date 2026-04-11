@@ -100,7 +100,17 @@ export const WORKSPACE_COPY = {
       rolePrefix: "Roles",
       viewDetails: "View details",
       rerun: "Start same debate",
-      delete: "Delete"
+      delete: "Delete",
+      confirmDelete: "Confirm delete",
+      cancelDelete: "Cancel",
+      detailTitle: "Details",
+      searchEnginePrefix: "Search engine",
+      evidencePrefix: "Evidence",
+      turnPrefix: "Turns",
+      coreDisagreementPrefix: "Core disagreement",
+      keyUncertaintyPrefix: "Key uncertainty",
+      nextActionPrefix: "Next action",
+      diagnosisPrefix: "Diagnosis"
     },
     providers: {
       listTitle: "Provider list",
@@ -241,7 +251,17 @@ export const WORKSPACE_COPY = {
       rolePrefix: "角色设定",
       viewDetails: "查看详情",
       rerun: "重新发起同题辩论",
-      delete: "删除"
+      delete: "删除",
+      confirmDelete: "确认删除",
+      cancelDelete: "取消",
+      detailTitle: "详情",
+      searchEnginePrefix: "搜索引擎",
+      evidencePrefix: "证据",
+      turnPrefix: "回合",
+      coreDisagreementPrefix: "核心分歧",
+      keyUncertaintyPrefix: "关键不确定性",
+      nextActionPrefix: "下一步",
+      diagnosisPrefix: "诊断"
     },
     providers: {
       listTitle: "服务商列表",

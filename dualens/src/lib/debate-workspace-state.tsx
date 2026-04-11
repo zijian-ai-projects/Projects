@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { SessionView } from "@/components/session-shell";
 import type { HistoryRecordMeta } from "@/lib/history-file-writer";
+import type { DebatePresetSelection, SpeakerSideKey } from "@/lib/types";
 
 export type SessionErrorKind = "start" | "advance" | "stop";
 export type HistorySaveStatus = "idle" | "written" | "skipped" | "error";
@@ -32,6 +33,10 @@ type DebateWorkspaceStateValue = {
   setIsStopping: Dispatch<SetStateAction<boolean>>;
   historySaveStatus: HistorySaveStatus;
   setHistorySaveStatus: Dispatch<SetStateAction<HistorySaveStatus>>;
+  draftPresetSelection: DebatePresetSelection | null;
+  setDraftPresetSelection: Dispatch<SetStateAction<DebatePresetSelection | null>>;
+  draftFirstSpeaker: SpeakerSideKey | null;
+  setDraftFirstSpeaker: Dispatch<SetStateAction<SpeakerSideKey | null>>;
 };
 
 const DebateWorkspaceStateContext = createContext<DebateWorkspaceStateValue | null>(null);
@@ -44,6 +49,8 @@ export function DebateWorkspaceStateProvider({ children }: { children: ReactNode
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [isStopping, setIsStopping] = useState(false);
   const [historySaveStatus, setHistorySaveStatus] = useState<HistorySaveStatus>("idle");
+  const [draftPresetSelection, setDraftPresetSelection] = useState<DebatePresetSelection | null>(null);
+  const [draftFirstSpeaker, setDraftFirstSpeaker] = useState<SpeakerSideKey | null>(null);
 
   const value = useMemo(
     () => ({
@@ -60,9 +67,23 @@ export function DebateWorkspaceStateProvider({ children }: { children: ReactNode
       isStopping,
       setIsStopping,
       historySaveStatus,
-      setHistorySaveStatus
+      setHistorySaveStatus,
+      draftPresetSelection,
+      setDraftPresetSelection,
+      draftFirstSpeaker,
+      setDraftFirstSpeaker
     }),
-    [errorDetail, errorKind, historyMeta, historySaveStatus, isStopping, question, session]
+    [
+      draftFirstSpeaker,
+      draftPresetSelection,
+      errorDetail,
+      errorKind,
+      historyMeta,
+      historySaveStatus,
+      isStopping,
+      question,
+      session
+    ]
   );
 
   return (

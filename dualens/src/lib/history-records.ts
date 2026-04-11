@@ -6,9 +6,11 @@ import {
 } from "@/lib/presets";
 import type {
   AppLanguage,
+  DebateSummary,
   DebatePresetSelection,
   SessionDiagnosis,
   SessionStage,
+  SpeakerSideKey,
   TemperamentOption
 } from "@/lib/types";
 
@@ -21,8 +23,17 @@ export type HistoryListRecord = {
   createdAt: string;
   createdAtIso: string;
   model: string;
+  searchEngine: string;
   roleSummary: string;
   status: HistoryStatus;
+  stage: SessionStage;
+  language: AppLanguage;
+  presetSelection: DebatePresetSelection;
+  firstSpeaker: SpeakerSideKey;
+  evidenceCount: number;
+  turnCount: number;
+  summary?: Pick<DebateSummary, "coreDisagreement" | "keyUncertainty" | "nextAction">;
+  diagnosis?: SessionDiagnosis;
 };
 
 type StoredHistoryRecord = {
@@ -30,9 +41,14 @@ type StoredHistoryRecord = {
   createdAt: string;
   question: string;
   model: string;
+  searchEngine?: string;
   presetSelection: DebatePresetSelection;
+  firstSpeaker?: SpeakerSideKey;
   language?: AppLanguage;
   stage: SessionStage;
+  evidence?: unknown[];
+  turns?: unknown[];
+  summary?: Pick<DebateSummary, "coreDisagreement" | "keyUncertainty" | "nextAction">;
   diagnosis?: SessionDiagnosis;
 };
 
@@ -73,6 +89,36 @@ function isSessionStage(value: unknown): value is SessionStage {
   );
 }
 
+function isSpeakerSideKey(value: unknown): value is SpeakerSideKey {
+  return value === "lumina" || value === "vigila";
+}
+
+function isSummaryPreview(value: unknown): value is Pick<
+  DebateSummary,
+  "coreDisagreement" | "keyUncertainty" | "nextAction"
+> {
+  return (
+    isRecord(value) &&
+    typeof value.coreDisagreement === "string" &&
+    typeof value.keyUncertainty === "string" &&
+    typeof value.nextAction === "string"
+  );
+}
+
+function isSessionDiagnosis(value: unknown): value is SessionDiagnosis {
+  return (
+    isRecord(value) &&
+    isSessionStage(value.stage) &&
+    value.stage !== "idle" &&
+    typeof value.failingStep === "string" &&
+    typeof value.providerBaseUrl === "string" &&
+    typeof value.providerModel === "string" &&
+    typeof value.category === "string" &&
+    typeof value.summary === "string" &&
+    typeof value.suggestedFix === "string"
+  );
+}
+
 function isStoredHistoryRecord(value: unknown): value is StoredHistoryRecord {
   if (!isRecord(value) || !isRecord(value.presetSelection)) {
     return false;
@@ -83,10 +129,16 @@ function isStoredHistoryRecord(value: unknown): value is StoredHistoryRecord {
     typeof value.createdAt === "string" &&
     typeof value.question === "string" &&
     typeof value.model === "string" &&
+    (value.searchEngine === undefined || typeof value.searchEngine === "string") &&
     typeof value.presetSelection.pairId === "string" &&
     typeof value.presetSelection.luminaTemperament === "string" &&
+    (value.firstSpeaker === undefined || isSpeakerSideKey(value.firstSpeaker)) &&
     isSessionStage(value.stage) &&
-    (value.language === undefined || isAppLanguage(value.language))
+    (value.language === undefined || isAppLanguage(value.language)) &&
+    (value.evidence === undefined || Array.isArray(value.evidence)) &&
+    (value.turns === undefined || Array.isArray(value.turns)) &&
+    (value.summary === undefined || isSummaryPreview(value.summary)) &&
+    (value.diagnosis === undefined || isSessionDiagnosis(value.diagnosis))
   );
 }
 
@@ -148,8 +200,17 @@ async function readHistoryFile(fileHandle: ReadableFileHandle): Promise<HistoryL
       createdAt: formatHistoryDate(parsed.createdAt),
       createdAtIso: parsed.createdAt,
       model: parsed.model,
+      searchEngine: parsed.searchEngine ?? "Tavily",
       roleSummary: getRoleSummary(parsed),
-      status: getHistoryStatus(parsed)
+      status: getHistoryStatus(parsed),
+      stage: parsed.stage,
+      language: parsed.language ?? "zh-CN",
+      presetSelection: parsed.presetSelection,
+      firstSpeaker: parsed.firstSpeaker ?? "lumina",
+      evidenceCount: parsed.evidence?.length ?? 0,
+      turnCount: parsed.turns?.length ?? 0,
+      summary: parsed.summary,
+      diagnosis: parsed.diagnosis
     };
   } catch {
     return null;

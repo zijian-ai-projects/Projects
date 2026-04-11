@@ -506,6 +506,10 @@ export function SessionShell({
         onSubmit={handleSubmit}
         questionValue={questionDraft.question}
         onQuestionChange={questionDraft.setQuestion}
+        presetSelectionValue={workspaceState?.draftPresetSelection ?? undefined}
+        onPresetSelectionChange={workspaceState?.setDraftPresetSelection}
+        firstSpeakerValue={workspaceState?.draftFirstSpeaker ?? undefined}
+        onFirstSpeakerChange={workspaceState?.setDraftFirstSpeaker}
       />
       {errorMessage ? (
         <p className="session-alert" role="alert">

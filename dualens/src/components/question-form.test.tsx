@@ -60,7 +60,7 @@ describe("QuestionForm", () => {
     expect(vigilaOrderChip).toHaveClass("text-white");
   });
 
-  it("briefly inverts the center swap button after swapping temperament assignment", () => {
+  it("toggles the center swap button color without hover-driven inversion", () => {
     render(<QuestionForm onSubmit={vi.fn()} uiLanguage="en" />);
 
     const swapTemperamentButton = screen.getByRole("button", {
@@ -70,6 +70,8 @@ describe("QuestionForm", () => {
 
     expect(swapTemperamentButton).toHaveClass("bg-white");
     expect(swapTemperamentButton).toHaveClass("text-black");
+    expect(swapTemperamentButton).not.toHaveClass("hover:bg-black");
+    expect(swapTemperamentButton).not.toHaveClass("hover:text-white");
     expect(swapTemperamentLabel).toHaveClass("text-black");
 
     fireEvent.click(swapTemperamentButton);
@@ -77,6 +79,23 @@ describe("QuestionForm", () => {
     expect(swapTemperamentButton).toHaveClass("bg-black");
     expect(swapTemperamentButton).toHaveClass("text-white");
     expect(swapTemperamentLabel).toHaveClass("text-white");
+
+    fireEvent.click(swapTemperamentButton);
+
+    expect(swapTemperamentButton).toHaveClass("bg-white");
+    expect(swapTemperamentButton).toHaveClass("text-black");
+    expect(swapTemperamentLabel).toHaveClass("text-black");
+  });
+
+  it("keeps role cards wide and shifts runtime controls next to the start button", () => {
+    render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
+
+    expect(screen.getByTestId("role-config-grid")).toHaveClass("max-w-none");
+    expect(screen.getByTestId("role-config-grid")).toHaveClass(
+      "xl:grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)]"
+    );
+    expect(screen.getByTestId("debate-action-row")).toHaveClass("lg:justify-end");
+    expect(screen.getByTestId("debate-action-row")).toHaveClass("lg:-mt-2");
   });
 
   it("does not server-render a hard-coded search-engine fallback", () => {

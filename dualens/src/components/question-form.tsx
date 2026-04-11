@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { SectionCard } from "@/components/common/section-card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -44,7 +44,6 @@ function QuestionFormImpl({
   const [isSwapActive, setIsSwapActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [questionError, setQuestionError] = useState(false);
-  const swapResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uiLanguage = controlledUiLanguage ?? "zh-CN";
   const uiCopy = getUiCopy(uiLanguage);
   const selectedPair =
@@ -95,26 +94,9 @@ function QuestionFormImpl({
     setSelectedSearchEngineLabel(loadSelectedSearchEngineLabel());
   }, []);
 
-  useEffect(
-    () => () => {
-      if (swapResetTimeoutRef.current) {
-        clearTimeout(swapResetTimeoutRef.current);
-      }
-    },
-    []
-  );
-
   const handleSwapTemperament = () => {
     setLuminaTemperament(presetLibrary.getOppositeTemperament(selectedPair, luminaTemperament));
-    setIsSwapActive(true);
-
-    if (swapResetTimeoutRef.current) {
-      clearTimeout(swapResetTimeoutRef.current);
-    }
-
-    swapResetTimeoutRef.current = setTimeout(() => {
-      setIsSwapActive(false);
-    }, 260);
+    setIsSwapActive((current) => !current);
   };
 
   const handleSelectPair = (pairId: TemperamentPairId) => {
@@ -215,7 +197,10 @@ function QuestionFormImpl({
           </div>
         }
       >
-        <div className="mx-auto grid w-full max-w-[980px] gap-3 xl:grid-cols-[minmax(0,0.92fr)_64px_minmax(0,0.92fr)] xl:items-center">
+        <div
+          data-testid="role-config-grid"
+          className="grid w-full max-w-none gap-3 xl:grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)] xl:items-center"
+        >
           <section className="rounded-[20px] border border-black bg-white px-4 py-3 shadow-[0_8px_18px_rgba(0,0,0,0.022)]">
             <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
               <div className="min-w-0">
@@ -238,16 +223,15 @@ function QuestionFormImpl({
           </section>
 
           <div className="flex items-center justify-center">
-            <Button
+            <button
               type="button"
-              variant="ghost"
               aria-label={uiCopy.swapTemperamentAssignment}
               aria-pressed={isSwapActive}
               className={[
-                "h-[52px] w-[52px] shrink-0 rounded-full border p-0 hover:bg-black hover:text-white",
+                "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border p-0 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50",
                 isSwapActive
                   ? "border-black bg-black text-white"
-                  : "border-black/12 bg-white text-black hover:bg-white/90 hover:text-black"
+                  : "border-black/12 bg-white text-black"
               ].join(" ")}
               onClick={handleSwapTemperament}
             >
@@ -260,7 +244,7 @@ function QuestionFormImpl({
               >
                 {uiCopy.swapButtonText}
               </span>
-            </Button>
+            </button>
           </div>
 
           <section className="rounded-[20px] border border-black bg-black px-4 py-3 shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
@@ -287,8 +271,11 @@ function QuestionFormImpl({
       </SectionCard>
 
       <SectionCard title={sectionCopy.actionTitle} description={sectionCopy.actionDescription}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[460px]">
+        <div
+          data-testid="debate-action-row"
+          className="flex flex-col gap-3 lg:-mt-2 lg:flex-row lg:items-start lg:justify-end"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
             <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
               <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
                 {sectionCopy.currentModelLabel}
@@ -304,7 +291,7 @@ function QuestionFormImpl({
               </p>
             </div>
           </div>
-          <div className="flex justify-start lg:justify-end">
+          <div className="flex justify-start lg:shrink-0 lg:justify-end lg:pt-1">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
             </Button>

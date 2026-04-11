@@ -60,7 +60,43 @@ function createHistoryRecord(
     firstSpeaker: "lumina",
     evidenceCount: 2,
     turnCount: 3,
+    evidence: [
+      {
+        id: "e1",
+        title: "住房成本报告",
+        url: "https://example.com/housing",
+        sourceName: "Example Research",
+        sourceType: "report",
+        summary: "住房成本过去一年明显上升。",
+        dataPoints: ["租金上涨 12%", "库存下降 8%"]
+      },
+      {
+        id: "e2",
+        title: "就业机会分析",
+        url: "https://example.com/jobs",
+        sourceName: "Example Jobs",
+        sourceType: "analysis",
+        summary: "新城市岗位供给更多。",
+        dataPoints: ["岗位增长 18%"]
+      }
+    ],
+    turns: [
+      {
+        id: "t1",
+        speaker: "乾明",
+        content: "应先控制搬迁成本，再评估机会。",
+        referencedEvidenceIds: ["e1"]
+      },
+      {
+        id: "t2",
+        speaker: "坤察",
+        content: "岗位增长说明收益可能覆盖成本。",
+        referencedEvidenceIds: ["e2"]
+      }
+    ],
     summary: {
+      strongestFor: [{ text: "机会增长明确。", evidenceIds: ["e2"] }],
+      strongestAgainst: [{ text: "住房成本上升。", evidenceIds: ["e1"] }],
       coreDisagreement: "核心分歧",
       keyUncertainty: "关键不确定性",
       nextAction: "下一步行动"
@@ -106,7 +142,7 @@ describe("HistoryPage", () => {
     expect(screen.getAllByRole("button", { name: "删除" }).length).toBeGreaterThan(0);
   });
 
-  it("deletes a saved history JSON record and removes the card", async () => {
+  it("opens a delete confirmation dialog before removing a history record", async () => {
     const user = userEvent.setup();
     const deleteRecord = vi.fn(async () => ({ status: "deleted" as const }));
 
@@ -126,16 +162,19 @@ describe("HistoryPage", () => {
 
     await user.click(within(card as HTMLElement).getByRole("button", { name: "删除" }));
 
-    expect(deleteRecord).not.toHaveBeenCalled();
-    expect(screen.getByText("如何安排下半年产品路线？")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "确认删除" });
 
-    await user.click(within(card as HTMLElement).getByRole("button", { name: "确认删除" }));
+    expect(deleteRecord).not.toHaveBeenCalled();
+    expect(within(dialog).getByText("如何安排下半年产品路线？")).toBeInTheDocument();
+    expect(within(card as HTMLElement).getByText("如何安排下半年产品路线？")).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "确认删除" }));
 
     expect(deleteRecord).toHaveBeenCalledWith("h1.json");
     expect(screen.queryByText("如何安排下半年产品路线？")).not.toBeInTheDocument();
   });
 
-  it("cancels a pending history deletion before removing the card", async () => {
+  it("cancels a delete confirmation dialog before removing the card", async () => {
     const user = userEvent.setup();
     const deleteRecord = vi.fn(async () => ({ status: "deleted" as const }));
 
@@ -157,15 +196,16 @@ describe("HistoryPage", () => {
     });
 
     await user.click(within(card).getByRole("button", { name: "删除" }));
-    expect(within(card).getByRole("button", { name: "确认删除" })).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "确认删除" });
 
-    await user.click(within(card).getByRole("button", { name: "取消" }));
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
 
     expect(deleteRecord).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "确认删除" })).not.toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "删除" })).toBeInTheDocument();
   });
 
-  it("toggles inline details for a saved history record", async () => {
+  it("opens a full debate-process details dialog for a saved history record", async () => {
     const user = userEvent.setup();
 
     renderHistoryPage({
@@ -186,14 +226,20 @@ describe("HistoryPage", () => {
 
     await user.click(within(card).getByRole("button", { name: "查看详情" }));
 
-    expect(within(card).getByText("搜索引擎：Tavily")).toBeInTheDocument();
-    expect(within(card).getByText("证据：2")).toBeInTheDocument();
-    expect(within(card).getByText("回合：3")).toBeInTheDocument();
-    expect(within(card).getByText("下一步：下一步行动")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "辩论详情" });
 
-    await user.click(within(card).getByRole("button", { name: "查看详情" }));
+    expect(within(dialog).getByText("搜索引擎：Tavily")).toBeInTheDocument();
+    expect(within(dialog).getByText("住房成本报告")).toBeInTheDocument();
+    expect(within(dialog).getByText("住房成本过去一年明显上升。")).toBeInTheDocument();
+    expect(within(dialog).getByText("租金上涨 12%")).toBeInTheDocument();
+    expect(within(dialog).getByText("应先控制搬迁成本，再评估机会。")).toBeInTheDocument();
+    expect(within(dialog).getByText("岗位增长说明收益可能覆盖成本。")).toBeInTheDocument();
+    expect(within(dialog).getByText("机会增长明确。")).toBeInTheDocument();
+    expect(within(dialog).getByText("下一步：下一步行动")).toBeInTheDocument();
 
-    expect(within(card).queryByText("搜索引擎：Tavily")).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "关闭" }));
+
+    expect(screen.queryByRole("dialog", { name: "辩论详情" })).not.toBeInTheDocument();
   });
 
   it("restores the debate draft and role settings when rerunning a history record", async () => {

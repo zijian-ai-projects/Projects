@@ -6,8 +6,10 @@ import {
 } from "@/lib/presets";
 import type {
   AppLanguage,
+  DebateTurn,
   DebateSummary,
   DebatePresetSelection,
+  Evidence,
   SessionDiagnosis,
   SessionStage,
   SpeakerSideKey,
@@ -30,9 +32,11 @@ export type HistoryListRecord = {
   language: AppLanguage;
   presetSelection: DebatePresetSelection;
   firstSpeaker: SpeakerSideKey;
+  evidence: Evidence[];
+  turns: DebateTurn[];
   evidenceCount: number;
   turnCount: number;
-  summary?: Pick<DebateSummary, "coreDisagreement" | "keyUncertainty" | "nextAction">;
+  summary?: DebateSummary;
   diagnosis?: SessionDiagnosis;
 };
 
@@ -46,10 +50,10 @@ type StoredHistoryRecord = {
   firstSpeaker?: SpeakerSideKey;
   language?: AppLanguage;
   stage: SessionStage;
-  evidence?: unknown[];
-  turns?: unknown[];
-  summary?: Pick<DebateSummary, "coreDisagreement" | "keyUncertainty" | "nextAction">;
-  diagnosis?: SessionDiagnosis;
+  evidence?: unknown;
+  turns?: unknown;
+  summary?: unknown;
+  diagnosis?: unknown;
 };
 
 type HistoryLoadStatus = HistoryFolderStatus | "error";
@@ -93,16 +97,86 @@ function isSpeakerSideKey(value: unknown): value is SpeakerSideKey {
   return value === "lumina" || value === "vigila";
 }
 
-function isSummaryPreview(value: unknown): value is Pick<
-  DebateSummary,
-  "coreDisagreement" | "keyUncertainty" | "nextAction"
-> {
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isEvidence(value: unknown): value is Evidence {
   return (
     isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.url === "string" &&
+    typeof value.sourceName === "string" &&
+    typeof value.sourceType === "string" &&
+    typeof value.summary === "string" &&
+    (value.dataPoints === undefined || isStringArray(value.dataPoints))
+  );
+}
+
+function isDebateTurn(value: unknown): value is DebateTurn {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.speaker === "string" &&
+    typeof value.content === "string" &&
+    isStringArray(value.referencedEvidenceIds)
+  );
+}
+
+function isSummaryPoint(value: unknown): value is DebateSummary["strongestFor"][number] {
+  return isRecord(value) && typeof value.text === "string" && isStringArray(value.evidenceIds);
+}
+
+function isDebateSummary(value: unknown): value is DebateSummary {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.strongestFor) &&
+    value.strongestFor.every(isSummaryPoint) &&
+    Array.isArray(value.strongestAgainst) &&
+    value.strongestAgainst.every(isSummaryPoint) &&
     typeof value.coreDisagreement === "string" &&
     typeof value.keyUncertainty === "string" &&
     typeof value.nextAction === "string"
   );
+}
+
+function getEvidenceList(value: unknown): Evidence[] {
+  return Array.isArray(value) ? value.filter(isEvidence) : [];
+}
+
+function getDebateTurns(value: unknown): DebateTurn[] {
+  return Array.isArray(value) ? value.filter(isDebateTurn) : [];
+}
+
+function getDebateSummary(value: unknown): DebateSummary | undefined {
+  if (isDebateSummary(value)) {
+    return value;
+  }
+
+  if (
+    isRecord(value) &&
+    typeof value.coreDisagreement === "string" &&
+    typeof value.keyUncertainty === "string" &&
+    typeof value.nextAction === "string"
+  ) {
+    const strongestFor = Array.isArray(value.strongestFor)
+      ? value.strongestFor.filter(isSummaryPoint)
+      : [];
+    const strongestAgainst = Array.isArray(value.strongestAgainst)
+      ? value.strongestAgainst.filter(isSummaryPoint)
+      : [];
+
+    return {
+      strongestFor,
+      strongestAgainst,
+      coreDisagreement: value.coreDisagreement,
+      keyUncertainty: value.keyUncertainty,
+      nextAction: value.nextAction
+    };
+  }
+
+  return undefined;
 }
 
 function isSessionDiagnosis(value: unknown): value is SessionDiagnosis {
@@ -134,11 +208,7 @@ function isStoredHistoryRecord(value: unknown): value is StoredHistoryRecord {
     typeof value.presetSelection.luminaTemperament === "string" &&
     (value.firstSpeaker === undefined || isSpeakerSideKey(value.firstSpeaker)) &&
     isSessionStage(value.stage) &&
-    (value.language === undefined || isAppLanguage(value.language)) &&
-    (value.evidence === undefined || Array.isArray(value.evidence)) &&
-    (value.turns === undefined || Array.isArray(value.turns)) &&
-    (value.summary === undefined || isSummaryPreview(value.summary)) &&
-    (value.diagnosis === undefined || isSessionDiagnosis(value.diagnosis))
+    (value.language === undefined || isAppLanguage(value.language))
   );
 }
 
@@ -160,8 +230,8 @@ function formatHistoryDate(isoDate: string) {
   ].join(" ");
 }
 
-function getHistoryStatus(record: StoredHistoryRecord): HistoryStatus {
-  if (record.diagnosis && record.stage !== "complete") {
+function getHistoryStatus(record: StoredHistoryRecord, diagnosis?: SessionDiagnosis): HistoryStatus {
+  if (diagnosis && record.stage !== "complete") {
     return "failed";
   }
 
@@ -193,6 +263,11 @@ async function readHistoryFile(fileHandle: ReadableFileHandle): Promise<HistoryL
       return null;
     }
 
+    const evidence = getEvidenceList(parsed.evidence);
+    const turns = getDebateTurns(parsed.turns);
+    const summary = getDebateSummary(parsed.summary);
+    const diagnosis = isSessionDiagnosis(parsed.diagnosis) ? parsed.diagnosis : undefined;
+
     return {
       id: parsed.id,
       fileName: fileHandle.name,
@@ -202,15 +277,17 @@ async function readHistoryFile(fileHandle: ReadableFileHandle): Promise<HistoryL
       model: parsed.model,
       searchEngine: parsed.searchEngine ?? "Tavily",
       roleSummary: getRoleSummary(parsed),
-      status: getHistoryStatus(parsed),
+      status: getHistoryStatus(parsed, diagnosis),
       stage: parsed.stage,
       language: parsed.language ?? "zh-CN",
       presetSelection: parsed.presetSelection,
       firstSpeaker: parsed.firstSpeaker ?? "lumina",
-      evidenceCount: parsed.evidence?.length ?? 0,
-      turnCount: parsed.turns?.length ?? 0,
-      summary: parsed.summary,
-      diagnosis: parsed.diagnosis
+      evidence,
+      turns,
+      evidenceCount: evidence.length,
+      turnCount: turns.length,
+      summary,
+      diagnosis
     };
   } catch {
     return null;

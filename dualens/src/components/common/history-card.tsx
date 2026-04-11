@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { StatusTag } from "@/components/common/status-tag";
-import type { ReactNode } from "react";
 
 type HistoryStatus = "complete" | "running" | "failed";
 
@@ -19,8 +18,6 @@ type HistoryCardCopy = {
   viewDetails: string;
   rerun: string;
   delete: string;
-  confirmDelete: string;
-  cancelDelete: string;
 };
 
 export function HistoryCard({
@@ -30,12 +27,9 @@ export function HistoryCard({
   roleSummary,
   status,
   copy,
-  details,
-  deleteConfirmationActive = false,
   onViewDetails,
   onRerun,
-  onDelete,
-  onCancelDelete
+  onDelete
 }: {
   question: string;
   createdAt: string;
@@ -43,12 +37,9 @@ export function HistoryCard({
   roleSummary: string;
   status: HistoryStatus;
   copy?: HistoryCardCopy;
-  details?: ReactNode;
-  deleteConfirmationActive?: boolean;
   onViewDetails?: () => void;
   onRerun?: () => void;
   onDelete?: () => void | Promise<void>;
-  onCancelDelete?: () => void;
 }) {
   const fallbackCopy: HistoryCardCopy = {
     complete: "已完成",
@@ -58,9 +49,7 @@ export function HistoryCard({
     rolePrefix: "角色设定",
     viewDetails: "查看详情",
     rerun: "重新发起同题辩论",
-    delete: "删除",
-    confirmDelete: "确认删除",
-    cancelDelete: "取消"
+    delete: "删除"
   };
   const cardCopy = copy ?? fallbackCopy;
   const statusLabel = {
@@ -91,20 +80,10 @@ export function HistoryCard({
             {cardCopy.rerun}
           </Button>
           <Button type="button" variant="ghost" onClick={onDelete}>
-            {deleteConfirmationActive ? cardCopy.confirmDelete : cardCopy.delete}
+            {cardCopy.delete}
           </Button>
-          {deleteConfirmationActive ? (
-            <Button type="button" variant="secondary" onClick={onCancelDelete}>
-              {cardCopy.cancelDelete}
-            </Button>
-          ) : null}
         </div>
       </div>
-      {details ? (
-        <div className="mt-5 rounded-[20px] border border-black/8 bg-black/[0.02] px-4 py-4 text-sm leading-6 text-app-muted">
-          {details}
-        </div>
-      ) : null}
     </article>
   );
 }

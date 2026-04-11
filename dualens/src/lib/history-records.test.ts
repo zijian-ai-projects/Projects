@@ -168,6 +168,46 @@ describe("history record loading", () => {
     expect(result.records[0]?.status).toBe("failed");
   });
 
+  it("loads records when optional debate detail fields are partial", async () => {
+    const legacyRecord = {
+      ...serializeHistoryRecord(createMeta(), createSession({ id: "session-legacy" })),
+      evidence: [{ id: "bad-evidence" }],
+      turns: "not-an-array",
+      summary: {
+        coreDisagreement: "旧版核心分歧",
+        keyUncertainty: "旧版关键不确定性",
+        nextAction: "旧版下一步"
+      }
+    };
+    const folder = createDirectoryHandle([
+      createFileHandle("legacy.json", JSON.stringify(legacyRecord))
+    ]);
+
+    loadHistoryFolderState.mockResolvedValue({
+      status: "authorized",
+      folderName: "history",
+      handle: folder
+    });
+
+    const result = await loadHistoryRecords();
+
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({
+      id: "session-legacy",
+      evidence: [],
+      turns: [],
+      evidenceCount: 0,
+      turnCount: 0,
+      summary: {
+        strongestFor: [],
+        strongestAgainst: [],
+        coreDisagreement: "旧版核心分歧",
+        keyUncertainty: "旧版关键不确定性",
+        nextAction: "旧版下一步"
+      }
+    });
+  });
+
   it("deletes a history JSON file from the selected folder", async () => {
     const folder = createDirectoryHandle([]);
 

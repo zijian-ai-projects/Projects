@@ -193,6 +193,47 @@ describe("SessionShell", () => {
     );
   });
 
+  it("submits the selected configured search engine runtime config when starting debate", async () => {
+    const user = setupUser();
+    const createSession = vi.fn().mockResolvedValue(
+      buildSession({
+        id: "s-search",
+        stage: "research"
+      })
+    );
+
+    window.localStorage.setItem("dualens:selectedSearchEngineId", "tavily");
+    window.localStorage.setItem(
+      "dualens:searchEngineConfigs",
+      JSON.stringify({
+        tavily: {
+          searchEngineId: "tavily",
+          apiKey: "client-tavily-key",
+          engineIdentifier: "",
+          endpoint: "https://api.tavily.com/search",
+          extra: ""
+        }
+      })
+    );
+
+    render(<SessionShell uiLanguage="en" createSession={createSession} continueSession={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Decision question"), "Should I move to another city?");
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    expect(createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchConfig: {
+          engineId: "tavily",
+          apiKey: "client-tavily-key",
+          endpoint: "https://api.tavily.com/search",
+          engineIdentifier: undefined,
+          extra: undefined
+        }
+      })
+    );
+  });
+
   it("shows the combined start error when create-session fails", async () => {
     const user = setupUser();
     const createSession = vi.fn().mockRejectedValue(new Error("Invalid session input"));

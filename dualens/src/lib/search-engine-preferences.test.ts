@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  loadActiveSearchEngineRuntimeConfig,
+  loadSearchEngineConfigs,
   loadSelectedSearchEngineId,
+  saveSearchEngineConfig,
   saveSelectedSearchEngineId
 } from "@/lib/search-engine-preferences";
 
@@ -17,10 +20,39 @@ describe("search-engine preferences", () => {
     expect(loadSelectedSearchEngineId()).toBe("tavily");
   });
 
+  it("loads default search engine configs when nothing has been saved", () => {
+    const configs = loadSearchEngineConfigs();
+
+    expect(configs.tavily).toMatchObject({
+      searchEngineId: "tavily",
+      endpoint: "https://api.tavily.com/search"
+    });
+    expect(loadActiveSearchEngineRuntimeConfig()).toBeNull();
+  });
+
   it("restores the saved engine id from localStorage", () => {
     saveSelectedSearchEngineId("google");
 
     expect(loadSelectedSearchEngineId()).toBe("google");
+  });
+
+  it("restores a complete saved runtime search configuration", () => {
+    saveSelectedSearchEngineId("tavily");
+    saveSearchEngineConfig("tavily", {
+      searchEngineId: "tavily",
+      apiKey: "client-tavily-key",
+      engineIdentifier: "",
+      endpoint: "https://api.tavily.com/search",
+      extra: ""
+    });
+
+    expect(loadActiveSearchEngineRuntimeConfig()).toEqual({
+      engineId: "tavily",
+      apiKey: "client-tavily-key",
+      endpoint: "https://api.tavily.com/search",
+      engineIdentifier: undefined,
+      extra: undefined
+    });
   });
 
   it("ignores invalid saved values", () => {

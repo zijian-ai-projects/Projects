@@ -253,7 +253,7 @@ describe("runtime built-in model mapping", () => {
   it("uses Tavily search when TAVILY_API_KEY is configured", async () => {
     vi.stubEnv("TAVILY_API_KEY", "tavily-key");
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
       if (url === "https://api.tavily.com/search") {
@@ -304,6 +304,60 @@ describe("runtime built-in model mapping", () => {
 
     expect(researched.evidence).toHaveLength(1);
     expect(fetchMock.mock.calls.some((call) => String(call[0]) === "https://api.tavily.com/search")).toBe(true);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("duckduckgo.com"))).toBe(false);
+
+    fetchMock.mockRestore();
+  });
+
+  it("uses a client-provided Tavily search config instead of DuckDuckGo search", async () => {
+    vi.stubEnv("TAVILY_API_KEY", undefined);
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url === "https://api.tavily.com/search") {
+        return new Response(
+          JSON.stringify({
+            results: [
+              {
+                title: "Housing report",
+                url: "https://example.com/housing",
+                content: "Median rent rose 8%."
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url === "https://example.com/housing") {
+        return new Response(
+          "<html><head><meta name=\"description\" content=\"Median rent rose 8%.\" /></head><body><p>Median rent rose 8%.</p></body></html>",
+          { status: 200, headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      return createOpenAIResponse();
+    });
+
+    const session = await runtime.createSession(
+      createSessionInput({
+        searchConfig: {
+          engineId: "tavily",
+          apiKey: "client-tavily-key",
+          endpoint: "https://api.tavily.com/search"
+        }
+      })
+    );
+    const researched = await runtime.continueSession(session.id);
+
+    const tavilyRequest = fetchMock.mock.calls.find(
+      (call) => String(call[0]) === "https://api.tavily.com/search"
+    );
+    const tavilyBody = JSON.parse(String(tavilyRequest?.[1]?.body));
+
+    expect(researched.evidence).toHaveLength(1);
+    expect(tavilyBody.api_key).toBe("client-tavily-key");
     expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("duckduckgo.com"))).toBe(false);
 
     fetchMock.mockRestore();

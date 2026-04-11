@@ -10,7 +10,7 @@ import SearchEnginesPage from "@/app/(workspace)/search-engines/page";
 import { APP_LANGUAGE_STORAGE_KEY, AppPreferencesProvider } from "@/lib/app-preferences";
 
 function renderSearchEnginesPage() {
-  render(
+  return render(
     <AppPreferencesProvider>
       <SearchEnginesPage />
     </AppPreferencesProvider>
@@ -38,7 +38,7 @@ describe("SearchEnginesPage", () => {
     const engineList = screen.getByRole("radiogroup", { name: "搜索引擎" });
 
     expect(engineList).toBeInTheDocument();
-    expect(within(engineList).getByText("已配置")).toHaveClass("text-black");
+    expect(within(engineList).queryByText("已配置")).not.toBeInTheDocument();
     expect(within(engineList).getAllByText("未配置").length).toBeGreaterThan(0);
     expect(within(engineList).queryByText("已接入")).not.toBeInTheDocument();
     expect(engineList.querySelector("[data-tone]")).not.toBeInTheDocument();
@@ -73,6 +73,31 @@ describe("SearchEnginesPage", () => {
     await user.click(bingCard);
 
     expect(window.localStorage.getItem("dualens:selectedSearchEngineId")).toBe("bing");
+  });
+
+  it("saves search engine configuration and restores it after remount", async () => {
+    const user = userEvent.setup();
+    const view = renderSearchEnginesPage();
+
+    await user.type(screen.getByLabelText("API Key"), "client-tavily-key");
+    await user.click(screen.getByRole("button", { name: "保存配置" }));
+
+    expect(within(screen.getByRole("radio", { name: "Tavily" })).getByText("已配置")).toHaveClass(
+      "text-black"
+    );
+
+    view.unmount();
+    renderSearchEnginesPage();
+
+    expect(await screen.findByRole("radio", { name: "Tavily" })).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByLabelText("API Key")).toHaveValue("client-tavily-key");
+    expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://api.tavily.com/search");
+    expect(within(screen.getByRole("radio", { name: "Tavily" })).getByText("已配置")).toHaveClass(
+      "text-black"
+    );
   });
 
   it("hydrates without mismatch when a saved engine exists", async () => {

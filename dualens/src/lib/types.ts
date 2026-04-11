@@ -1,10 +1,18 @@
 export type SourceStrategy = "credible-first" | "full-web";
 export type SummaryStyle = "balanced" | "concise" | "actionable";
 export type BuiltInModel = "deepseek-chat" | "deepseek-reasoner";
+export type SearchEngineId = "bing" | "baidu" | "google" | "tavily";
 export type OpenAICompatibleProviderConfig = {
   baseUrl: string;
   apiKey: string;
   model: string;
+};
+export type SearchEngineRuntimeConfig = {
+  engineId: SearchEngineId;
+  apiKey: string;
+  endpoint: string;
+  engineIdentifier?: string;
+  extra?: string;
 };
 
 export type DiagnosticCategory =
@@ -97,6 +105,7 @@ export type SessionConfig = {
   roundCount: number;
   summaryStyle: SummaryStyle;
   provider: OpenAICompatibleProviderConfig;
+  searchProvider?: SearchEngineRuntimeConfig;
 };
 
 export type SessionConfigDefaults = Pick<
@@ -112,6 +121,7 @@ export type SessionCreateInput = {
   premise?: string;
   model: string;
   providerConfig?: OpenAICompatibleProviderConfig;
+  searchConfig?: SearchEngineRuntimeConfig;
   config?: Partial<SessionConfig>;
 };
 

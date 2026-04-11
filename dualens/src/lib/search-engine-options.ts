@@ -1,4 +1,6 @@
-export type SearchEngineId = "bing" | "baidu" | "google" | "tavily";
+import type { SearchEngineId } from "@/lib/types";
+
+export type { SearchEngineId };
 
 export const searchEngineItems = [
   {

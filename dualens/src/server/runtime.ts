@@ -16,6 +16,7 @@ import type {
   DebateTurn,
   OpenAICompatibleProviderConfig,
   ResearchProgressView,
+  SearchEngineRuntimeConfig,
   SessionDiagnosis,
   SessionDiagnosisContext,
   SessionDiagnosisStage,
@@ -50,7 +51,41 @@ type DiagnosableSession = SessionRecord & {
   stage: SessionDiagnosisStage;
 };
 
-function createResearchProvider() {
+function createUnsupportedConfiguredSearchProvider(
+  config: SearchEngineRuntimeConfig
+): ConfiguredResearchProvider {
+  const extractor = createDuckDuckGoProvider();
+
+  return {
+    async search() {
+      throw new Error(`Selected search engine "${config.engineId}" is not implemented by the runtime yet.`);
+    },
+    extract: extractor.extract,
+    diagnosticBaseUrl: config.endpoint,
+    diagnosticLabel: config.engineId
+  };
+}
+
+function createResearchProvider(searchConfig?: SearchEngineRuntimeConfig) {
+  if (searchConfig) {
+    if (searchConfig.engineId === "tavily") {
+      const tavilyProvider = createTavilyProvider({
+        apiKey: searchConfig.apiKey,
+        endpoint: searchConfig.endpoint
+      });
+      const extractor = createDuckDuckGoProvider();
+
+      return {
+        search: tavilyProvider.search,
+        extract: extractor.extract,
+        diagnosticBaseUrl: searchConfig.endpoint,
+        diagnosticLabel: "tavily"
+      } satisfies ConfiguredResearchProvider;
+    }
+
+    return createUnsupportedConfiguredSearchProvider(searchConfig);
+  }
+
   const tavilyApiKey = process.env.TAVILY_API_KEY?.trim();
   if (tavilyApiKey) {
     const tavilyProvider = createTavilyProvider({ apiKey: tavilyApiKey });
@@ -79,8 +114,8 @@ function createResearchProvider() {
   } satisfies ConfiguredResearchProvider;
 }
 
-function getResearchService() {
-  const provider = createResearchProvider();
+function getResearchService(searchConfig?: SearchEngineRuntimeConfig) {
+  const provider = createResearchProvider(searchConfig);
 
   return {
     provider,
@@ -266,7 +301,7 @@ function mergeEvidence(existing: SessionRecord["evidence"], incoming: SessionRec
 }
 
 async function buildDebateEvidenceWithFallback(sessionId: string, session: SessionRecord) {
-  const { service: researchService } = getResearchService();
+  const { service: researchService } = getResearchService(session.config.searchProvider);
 
   try {
     const additionalEvidence = await researchService.buildSharedEvidence(buildDebateResearchQuery(session), {
@@ -309,13 +344,16 @@ async function generateTurnPair(session: SessionRecord) {
 }
 
 const orchestrator = createOrchestrator(store, {
-  runSharedResearch: (session) => getResearchService().service.buildSharedEvidence(session.question),
+  runSharedResearch: (session) =>
+    getResearchService(session.config.searchProvider).service.buildSharedEvidence(session.question),
   runOpeningRound: async (session) => ({
     ...session,
     turns: await generateTurnPair(session)
   }),
   runDebateRound: async (session) => {
-    const additionalEvidence = await getResearchService().service.buildSharedEvidence(buildDebateResearchQuery(session));
+    const additionalEvidence = await getResearchService(session.config.searchProvider).service.buildSharedEvidence(
+      buildDebateResearchQuery(session)
+    );
     const evidence = mergeEvidence(session.evidence, additionalEvidence);
 
     return {
@@ -333,8 +371,9 @@ function cloneSession(session: SessionRecord): SessionRecord {
 }
 
 type ClientSessionRecord = Omit<SessionRecord, "config"> & {
-  config: Omit<SessionRecord["config"], "provider"> & {
+  config: Omit<SessionRecord["config"], "provider" | "searchProvider"> & {
     provider: Omit<OpenAICompatibleProviderConfig, "apiKey">;
+    searchProvider?: Omit<SearchEngineRuntimeConfig, "apiKey">;
   };
 };
 
@@ -344,12 +383,21 @@ function redactSessionForClient(session: SessionRecord): ClientSessionRecord {
     baseUrl: cloned.config.provider.baseUrl,
     model: cloned.config.provider.model
   };
+  const searchProvider = cloned.config.searchProvider
+    ? {
+        engineId: cloned.config.searchProvider.engineId,
+        endpoint: cloned.config.searchProvider.endpoint,
+        engineIdentifier: cloned.config.searchProvider.engineIdentifier,
+        extra: cloned.config.searchProvider.extra
+      }
+    : undefined;
 
   return {
     ...cloned,
     config: {
       ...cloned.config,
-      provider
+      provider,
+      ...(searchProvider ? { searchProvider } : {})
     }
   };
 }
@@ -376,7 +424,7 @@ function getDiagnosisStep(session: SessionRecord) {
 
 function getDiagnosisContext(session: DiagnosableSession): SessionDiagnosisContext {
   if (session.stage === "research") {
-    const { provider } = getResearchService();
+    const { provider } = getResearchService(session.config.searchProvider);
 
     return {
       stage: session.stage,
@@ -492,7 +540,7 @@ function getSessionOrThrow(sessionId: string) {
 
 async function advanceSessionStep(sessionId: string) {
   const session = getSessionOrThrow(sessionId);
-  const { service: researchService } = getResearchService();
+  const { service: researchService } = getResearchService(session.config.searchProvider);
 
   if (session.stage === "research") {
     let previewItems: ResearchProgressView["previewItems"] = [];
@@ -633,7 +681,8 @@ export const runtime = {
       premise: parsed.premise,
       config: {
         ...parsed.config,
-        provider
+        provider,
+        ...(parsed.searchConfig ? { searchProvider: parsed.searchConfig } : {})
       }
     });
 
@@ -643,7 +692,8 @@ export const runtime = {
       ...session,
       config: {
         ...session.config,
-        provider
+        provider,
+        ...(parsed.searchConfig ? { searchProvider: parsed.searchConfig } : {})
       }
     });
   },

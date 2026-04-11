@@ -10,18 +10,27 @@ import { Input } from "@/components/ui/input";
 import { useAppPreferences } from "@/lib/app-preferences";
 import { searchEngineItems, type SearchEngineId } from "@/lib/search-engine-options";
 import {
+  createDefaultSearchEngineConfigs,
+  isSearchEngineConfigured,
+  loadSearchEngineConfigs,
   loadSelectedSearchEngineId,
+  resetSearchEngineConfig,
+  saveSearchEngineConfig,
   saveSelectedSearchEngineId
 } from "@/lib/search-engine-preferences";
+import type { SearchEngineConfig } from "@/lib/search-engine-preferences";
 import { useSelectableCardGroup } from "@/lib/use-selectable-card-group";
 import { getWorkspaceCopy } from "@/lib/workspace-copy";
 
 export default function SearchEnginesPage() {
   const { language } = useAppPreferences();
   const [selectedEngineId, setSelectedEngineId] = useState<SearchEngineId>("tavily");
+  const [configs, setConfigs] = useState(() => createDefaultSearchEngineConfigs());
   const [hasLoadedPreference, setHasLoadedPreference] = useState(false);
   const selectedEngine =
     searchEngineItems.find((item) => item.id === selectedEngineId) ?? searchEngineItems[0];
+  const selectedConfig = configs[selectedEngineId];
+  const selectedConfigured = isSearchEngineConfigured(selectedConfig);
   const copy = getWorkspaceCopy(language);
   const searchCopy = copy.searchEngines;
   const { getItemProps } = useSelectableCardGroup({
@@ -32,6 +41,7 @@ export default function SearchEnginesPage() {
 
   useEffect(() => {
     setSelectedEngineId(loadSelectedSearchEngineId());
+    setConfigs(loadSearchEngineConfigs());
     setHasLoadedPreference(true);
   }, []);
 
@@ -42,6 +52,20 @@ export default function SearchEnginesPage() {
 
     saveSelectedSearchEngineId(selectedEngineId);
   }, [hasLoadedPreference, selectedEngineId]);
+
+  const updateSelectedConfig = (patch: Partial<SearchEngineConfig>) => {
+    setConfigs((current) => ({
+      ...current,
+      [selectedEngineId]: {
+        ...current[selectedEngineId],
+        ...patch
+      }
+    }));
+  };
+
+  const refreshConfigs = () => {
+    setConfigs(loadSearchEngineConfigs());
+  };
 
   return (
     <div className="space-y-8 px-6 py-8 lg:px-10 lg:py-10">
@@ -54,13 +78,14 @@ export default function SearchEnginesPage() {
           <div role="radiogroup" aria-label={searchCopy.groupLabel} className="space-y-3">
             {searchEngineItems.map((engine) => {
               const itemProps = getItemProps(engine.id);
+              const configured = isSearchEngineConfigured(configs[engine.id]);
 
               return (
                 <SelectionCardItem
                   key={engine.id}
                   name={engine.name}
-                  configured={engine.configured}
-                  statusLabel={engine.configured ? searchCopy.configured : searchCopy.unconfigured}
+                  configured={configured}
+                  statusLabel={configured ? searchCopy.configured : searchCopy.unconfigured}
                   active={engine.id === selectedEngineId}
                   icon={engine.icon}
                   tabIndex={itemProps.tabIndex}
@@ -78,33 +103,69 @@ export default function SearchEnginesPage() {
           title={selectedEngine.name}
           description={selectedEngine.helperText[language]}
           action={
-            <StatusTag tone={selectedEngine.configured ? "success" : "neutral"}>
-              {selectedEngine.configured ? searchCopy.configured : searchCopy.unconfigured}
+            <StatusTag tone={selectedConfigured ? "success" : "neutral"}>
+              {selectedConfigured ? searchCopy.configured : searchCopy.unconfigured}
             </StatusTag>
           }
         >
           <div className="grid gap-4">
             <label className="space-y-2 text-sm font-medium text-app-strong">
               <span>{searchCopy.apiKey}</span>
-              <Input aria-label={searchCopy.apiKey} type="password" placeholder={searchCopy.apiKeyPlaceholder} />
+              <Input
+                aria-label={searchCopy.apiKey}
+                type="password"
+                value={selectedConfig.apiKey}
+                onChange={(event) => updateSelectedConfig({ apiKey: event.target.value })}
+                placeholder={searchCopy.apiKeyPlaceholder}
+              />
             </label>
             <label className="space-y-2 text-sm font-medium text-app-strong">
               <span>{searchCopy.engineId}</span>
-              <Input aria-label={searchCopy.engineId} placeholder={searchCopy.engineIdPlaceholder} />
+              <Input
+                aria-label={searchCopy.engineId}
+                value={selectedConfig.engineIdentifier}
+                onChange={(event) => updateSelectedConfig({ engineIdentifier: event.target.value })}
+                placeholder={searchCopy.engineIdPlaceholder}
+              />
             </label>
             <label className="space-y-2 text-sm font-medium text-app-strong">
               <span>{searchCopy.endpoint}</span>
-              <Input aria-label={searchCopy.endpoint} defaultValue={selectedEngine.endpoint} />
+              <Input
+                aria-label={searchCopy.endpoint}
+                value={selectedConfig.endpoint}
+                onChange={(event) => updateSelectedConfig({ endpoint: event.target.value })}
+              />
             </label>
             <label className="space-y-2 text-sm font-medium text-app-strong">
               <span>{searchCopy.extra}</span>
-              <Input aria-label={searchCopy.extra} placeholder={searchCopy.extraPlaceholder} />
+              <Input
+                aria-label={searchCopy.extra}
+                value={selectedConfig.extra}
+                onChange={(event) => updateSelectedConfig({ extra: event.target.value })}
+                placeholder={searchCopy.extraPlaceholder}
+              />
             </label>
             <div className="flex justify-end gap-3">
-              <Button type="button" variant="secondary">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  resetSearchEngineConfig(selectedEngineId);
+                  refreshConfigs();
+                }}
+              >
                 {searchCopy.reset}
               </Button>
-              <Button type="button">{searchCopy.save}</Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  saveSelectedSearchEngineId(selectedEngineId);
+                  saveSearchEngineConfig(selectedEngineId, selectedConfig);
+                  refreshConfigs();
+                }}
+              >
+                {searchCopy.save}
+              </Button>
             </div>
           </div>
         </SectionCard>

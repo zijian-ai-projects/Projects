@@ -17,6 +17,13 @@ const providerConfigSchema = z.object({
   apiKey: trimmedStringSchema.min(1),
   model: trimmedStringSchema.min(1)
 }).strict();
+const searchConfigSchema = z.object({
+  engineId: z.enum(["bing", "baidu", "google", "tavily"]),
+  apiKey: trimmedStringSchema.min(1),
+  endpoint: trimmedStringSchema.min(1).url(),
+  engineIdentifier: trimmedStringSchema.min(1).optional(),
+  extra: trimmedStringSchema.min(1).optional()
+}).strict();
 const sessionConfigSchema = z.object({
   sourceStrategy: z.enum(["credible-first", "full-web"]).optional(),
   searchDepth: z.enum(["quick", "standard", "deep"]).optional(),
@@ -58,6 +65,7 @@ export const createSessionInputSchema = z
     premise: trimmedOptionalStringSchema,
     model: modelSchema,
     providerConfig: providerConfigSchema.optional(),
+    searchConfig: searchConfigSchema.optional(),
     config: sessionConfigSchema.optional()
   })
   .strict();

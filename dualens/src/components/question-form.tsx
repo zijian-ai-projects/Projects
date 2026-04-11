@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { SectionCard } from "@/components/common/section-card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -41,8 +41,10 @@ function QuestionFormImpl({
   );
   const [firstSpeaker, setFirstSpeaker] = useState<SpeakerSideKey>("lumina");
   const [selectedSearchEngineLabel, setSelectedSearchEngineLabel] = useState<string | null>(null);
+  const [isSwapActive, setIsSwapActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [questionError, setQuestionError] = useState(false);
+  const swapResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uiLanguage = controlledUiLanguage ?? "zh-CN";
   const uiCopy = getUiCopy(uiLanguage);
   const selectedPair =
@@ -93,8 +95,26 @@ function QuestionFormImpl({
     setSelectedSearchEngineLabel(loadSelectedSearchEngineLabel());
   }, []);
 
+  useEffect(
+    () => () => {
+      if (swapResetTimeoutRef.current) {
+        clearTimeout(swapResetTimeoutRef.current);
+      }
+    },
+    []
+  );
+
   const handleSwapTemperament = () => {
     setLuminaTemperament(presetLibrary.getOppositeTemperament(selectedPair, luminaTemperament));
+    setIsSwapActive(true);
+
+    if (swapResetTimeoutRef.current) {
+      clearTimeout(swapResetTimeoutRef.current);
+    }
+
+    swapResetTimeoutRef.current = setTimeout(() => {
+      setIsSwapActive(false);
+    }, 260);
   };
 
   const handleSelectPair = (pairId: TemperamentPairId) => {
@@ -195,10 +215,10 @@ function QuestionFormImpl({
           </div>
         }
       >
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] xl:items-center">
-          <section className="rounded-[22px] border border-black/8 bg-white px-5 py-4 shadow-[0_8px_20px_rgba(0,0,0,0.025)]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
+        <div className="mx-auto grid w-full max-w-[980px] gap-3 xl:grid-cols-[minmax(0,0.92fr)_64px_minmax(0,0.92fr)] xl:items-center">
+          <section className="rounded-[20px] border border-black bg-white px-4 py-3 shadow-[0_8px_18px_rgba(0,0,0,0.022)]">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
+              <div className="min-w-0">
                 <div className="text-base font-semibold text-app-strong">{luminaIdentity.name}</div>
                 <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-app-muted">
                   {luminaIdentity.descriptor}
@@ -206,14 +226,14 @@ function QuestionFormImpl({
               </div>
               <button
                 type="button"
-                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-app-muted transition hover:border-black/18 hover:text-app-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+                className="rounded-full border border-black bg-white px-3 py-1 text-xs font-medium text-black transition hover:bg-black/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
                 onClick={toggleSpeakingOrder}
               >
                 {getOrderLabel("lumina")}
               </button>
-            </div>
-            <div className="mt-4 rounded-[16px] border border-black/8 bg-black/[0.02] px-4 py-2.5 text-sm font-medium text-app-strong">
-              {sectionCopy.styleLabel}：{selectedLuminaLabel}
+              <div className="inline-flex rounded-full border border-black bg-white px-3 py-1 text-xs font-medium text-black">
+                {selectedLuminaLabel}
+              </div>
             </div>
           </section>
 
@@ -222,21 +242,30 @@ function QuestionFormImpl({
               type="button"
               variant="ghost"
               aria-label={uiCopy.swapTemperamentAssignment}
-              className="h-[52px] w-[52px] shrink-0 rounded-full border border-black/12 bg-white p-0 text-black hover:bg-white/90 hover:text-black"
+              aria-pressed={isSwapActive}
+              className={[
+                "h-[52px] w-[52px] shrink-0 rounded-full border p-0 hover:bg-black hover:text-white",
+                isSwapActive
+                  ? "border-black bg-black text-white"
+                  : "border-black/12 bg-white text-black hover:bg-white/90 hover:text-black"
+              ].join(" ")}
               onClick={handleSwapTemperament}
             >
               <span
                 data-testid="temperament-swap-icon"
-                className="flex h-full w-full items-center justify-center rounded-full text-sm font-semibold lowercase tracking-[0.06em] text-black"
+                className={[
+                  "flex h-full w-full items-center justify-center rounded-full text-sm font-semibold lowercase tracking-[0.06em]",
+                  isSwapActive ? "text-white" : "text-black"
+                ].join(" ")}
               >
                 {uiCopy.swapButtonText}
               </span>
             </Button>
           </div>
 
-          <section className="rounded-[22px] border border-black bg-black px-5 py-4 shadow-[0_8px_22px_rgba(0,0,0,0.07)]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
+          <section className="rounded-[20px] border border-black bg-black px-4 py-3 shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
+              <div className="min-w-0">
                 <div className="text-base font-semibold text-white">{vigilaIdentity.name}</div>
                 <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/60">
                   {vigilaIdentity.descriptor}
@@ -244,39 +273,29 @@ function QuestionFormImpl({
               </div>
               <button
                 type="button"
-                className="rounded-full border border-white/16 bg-black px-3 py-1 text-xs font-medium text-white/66 transition hover:bg-white/8 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                className="rounded-full border border-white/28 bg-black px-3 py-1 text-xs font-medium text-white transition hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
                 onClick={toggleSpeakingOrder}
               >
                 {getOrderLabel("vigila")}
               </button>
-            </div>
-            <div className="mt-4 rounded-[16px] border border-white/10 bg-white/[0.08] px-4 py-2.5 text-sm font-medium text-white">
-              {sectionCopy.styleLabel}：{selectedVigilaLabel}
+              <div className="inline-flex rounded-full border border-white bg-transparent px-3 py-1 text-xs font-medium text-white">
+                {selectedVigilaLabel}
+              </div>
             </div>
           </section>
         </div>
       </SectionCard>
 
       <SectionCard title={sectionCopy.actionTitle} description={sectionCopy.actionDescription}>
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
-            </Button>
-            <p className="text-sm leading-6 text-app-muted">
-              {uiLanguage === "en"
-                ? "The debate will use the current default model and search engine."
-                : "本次辩论将使用当前默认模型与搜索引擎。"}
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[420px]">
-            <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-3">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[460px]">
+            <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
               <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
                 {sectionCopy.currentModelLabel}
               </p>
               <p className="mt-1 text-sm font-medium text-app-strong">{DEFAULT_MODEL}</p>
             </div>
-            <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-3">
+            <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
               <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
                 {sectionCopy.currentSearchEngineLabel}
               </p>
@@ -284,6 +303,11 @@ function QuestionFormImpl({
                 {selectedSearchEngineLabel ?? sectionCopy.searchEngineLoadingLabel}
               </p>
             </div>
+          </div>
+          <div className="flex justify-start lg:justify-end">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
+            </Button>
           </div>
         </div>
       </SectionCard>

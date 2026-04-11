@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,22 +38,29 @@ describe("QuestionForm", () => {
     expect(screen.getByText("deepseek-chat")).toBeInTheDocument();
     expect(screen.getByText("当前搜索引擎")).toBeInTheDocument();
     expect(screen.getByText("Tavily")).toBeInTheDocument();
+    expect(screen.queryByText("本次辩论将使用当前默认模型与搜索引擎。")).not.toBeInTheDocument();
   });
 
-  it("renders compact style summaries instead of the speaking-order block", () => {
+  it("renders compact style labels instead of prefixed style summaries", () => {
     render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
 
-    expect(screen.getByText("风格：谨慎")).toBeInTheDocument();
-    expect(screen.getByText("风格：激进")).toBeInTheDocument();
+    expect(screen.queryByText("风格：谨慎")).not.toBeInTheDocument();
+    expect(screen.queryByText("风格：激进")).not.toBeInTheDocument();
     expect(screen.queryByText("发言顺序")).not.toBeInTheDocument();
 
     const luminaCard = getCardBySideName("乾明");
+    const vigilaCard = getCardBySideName("坤察");
     const luminaOrderChip = within(luminaCard).getByRole("button", { name: "先" });
+    const vigilaOrderChip = within(vigilaCard).getByRole("button", { name: "后" });
 
+    expect(within(luminaCard).getByText("谨慎")).toBeInTheDocument();
+    expect(within(vigilaCard).getByText("激进")).toBeInTheDocument();
     expect(luminaOrderChip).toHaveClass("rounded-full");
+    expect(luminaOrderChip).toHaveClass("border-black");
+    expect(vigilaOrderChip).toHaveClass("text-white");
   });
 
-  it("keeps the center swap button idle state white with black text", () => {
+  it("briefly inverts the center swap button after swapping temperament assignment", () => {
     render(<QuestionForm onSubmit={vi.fn()} uiLanguage="en" />);
 
     const swapTemperamentButton = screen.getByRole("button", {
@@ -64,6 +71,12 @@ describe("QuestionForm", () => {
     expect(swapTemperamentButton).toHaveClass("bg-white");
     expect(swapTemperamentButton).toHaveClass("text-black");
     expect(swapTemperamentLabel).toHaveClass("text-black");
+
+    fireEvent.click(swapTemperamentButton);
+
+    expect(swapTemperamentButton).toHaveClass("bg-black");
+    expect(swapTemperamentButton).toHaveClass("text-white");
+    expect(swapTemperamentLabel).toHaveClass("text-white");
   });
 
   it("does not server-render a hard-coded search-engine fallback", () => {

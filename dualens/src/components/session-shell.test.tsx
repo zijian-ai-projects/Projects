@@ -24,6 +24,17 @@ function setupUser() {
   return userEvent.setup();
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
 function buildSession(overrides: Partial<SessionView> & Pick<SessionView, "id" | "stage">): SessionView {
   return {
     id: overrides.id,
@@ -273,5 +284,91 @@ describe("SessionShell", () => {
         stage: "research"
       })
     );
+  });
+
+  it("captures the search-engine label before createSession resolves", async () => {
+    const user = setupUser();
+    const createSessionDeferred = createDeferred<SessionView>();
+    const createSession = vi.fn(() => createSessionDeferred.promise);
+
+    window.localStorage.setItem("dualens:selectedSearchEngineId", "google");
+
+    render(<SessionShell createSession={createSession} continueSession={vi.fn()} uiLanguage="en" />);
+
+    await user.type(
+      screen.getByLabelText("Decision question"),
+      "Should I move to Shanghai this year?"
+    );
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    window.localStorage.setItem("dualens:selectedSearchEngineId", "bing");
+    createSessionDeferred.resolve(
+      buildSession({
+        id: "session-2",
+        stage: "research"
+      })
+    );
+
+    await waitFor(() => {
+      expect(persistSessionHistory).toHaveBeenCalledTimes(1);
+    });
+
+    expect(persistSessionHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "session-2",
+        searchEngine: "Google"
+      }),
+      expect.objectContaining({
+        id: "session-2"
+      })
+    );
+  });
+
+  it("waits for the previous history write before persisting the next snapshot", async () => {
+    const user = setupUser();
+    const firstWriteDeferred = createDeferred<{ status: "written" }>();
+    const createSession = vi.fn().mockResolvedValueOnce(
+      buildSession({
+        id: "session-3",
+        stage: "research"
+      })
+    );
+    const continueSession = vi.fn().mockResolvedValueOnce(
+      buildSession({
+        id: "session-3",
+        stage: "complete"
+      })
+    );
+
+    persistSessionHistory
+      .mockImplementationOnce(() => firstWriteDeferred.promise)
+      .mockImplementationOnce(async () => ({ status: "written" as const }));
+
+    render(
+      <SessionShell
+        createSession={createSession}
+        continueSession={continueSession}
+        uiLanguage="en"
+      />
+    );
+
+    await user.type(
+      screen.getByLabelText("Decision question"),
+      "Should I move to Shanghai this year?"
+    );
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    await waitFor(() => {
+      expect(continueSession).toHaveBeenCalledWith("session-3");
+    });
+
+    expect(await screen.findByText("Summary ready")).toBeInTheDocument();
+    expect(persistSessionHistory).toHaveBeenCalledTimes(1);
+
+    firstWriteDeferred.resolve({ status: "written" });
+
+    await waitFor(() => {
+      expect(persistSessionHistory).toHaveBeenCalledTimes(2);
+    });
   });
 });

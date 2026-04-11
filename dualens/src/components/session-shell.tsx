@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { QuestionForm } from "@/components/question-form";
 import { DebateTimeline } from "@/components/debate-timeline";
 import { EvidencePanel } from "@/components/evidence-panel";
@@ -332,6 +332,7 @@ export function SessionShell({
   const [errorKind, setErrorKind] = useState<SessionErrorKind | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [isStopping, setIsStopping] = useState(false);
+  const persistQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const uiCopy = getUiCopy(uiLanguage);
   const errorMessage = errorKind
     ? [uiCopy.sessionErrors[errorKind], errorDetail].filter(Boolean).join(" ")
@@ -339,6 +340,7 @@ export function SessionShell({
   const handleSubmit = useCallback(
     async (input: SessionInput) => {
       const createdAt = new Date().toISOString();
+      const searchEngine = loadSelectedSearchEngineLabel();
       setSession(null);
       setHistoryMeta(null);
       setErrorKind(null);
@@ -360,7 +362,7 @@ export function SessionShell({
           firstSpeaker: input.firstSpeaker,
           language: input.language,
           model: input.model,
-          searchEngine: loadSelectedSearchEngineLabel()
+          searchEngine
         });
         setSession(next);
       } catch (error) {
@@ -425,7 +427,9 @@ export function SessionShell({
       return;
     }
 
-    void persistSessionHistory(historyMeta, session);
+    persistQueueRef.current = persistQueueRef.current
+      .catch(() => undefined)
+      .then(() => persistSessionHistory(historyMeta, session));
   }, [historyMeta, session]);
 
   return (

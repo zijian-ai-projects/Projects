@@ -30,7 +30,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { APP_LANGUAGE_STORAGE_KEY, AppPreferencesProvider } from "@/lib/app-preferences";
 
 function renderSidebar() {
-  render(
+  return render(
     <AppPreferencesProvider>
       <AppSidebar />
     </AppPreferencesProvider>
@@ -75,5 +75,15 @@ describe("workspace navigation copy", () => {
       "page"
     );
     expect(screen.getByText("One question, two sides, visible evidence.")).toBeInTheDocument();
+  });
+
+  it("integrates the brand block and marks the taiji for slow counterclockwise rotation", () => {
+    const { container } = renderSidebar();
+    const taijiMark = container.querySelector("svg");
+    const brandLink = taijiMark?.closest("a");
+
+    expect(taijiMark).toHaveClass("animate-taiji-counterclockwise");
+    expect(brandLink).not.toHaveClass("border");
+    expect(brandLink).not.toHaveClass("bg-white");
   });
 });

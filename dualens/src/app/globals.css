@@ -32,6 +32,21 @@ body {
   background: rgba(17, 17, 17, 0.14);
 }
 
+@keyframes taiji-counterclockwise {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-taiji-counterclockwise {
+  animation: taiji-counterclockwise 28s linear infinite;
+  transform-origin: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

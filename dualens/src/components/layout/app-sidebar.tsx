@@ -17,7 +17,7 @@ function TaijiMark() {
   return (
     <svg
       aria-hidden="true"
-      className="h-10 w-10 shrink-0 text-[#111111]"
+      className="h-10 w-10 shrink-0 animate-taiji-counterclockwise text-[#111111]"
       fill="none"
       viewBox="0 0 120 120"
       xmlns="http://www.w3.org/2000/svg"

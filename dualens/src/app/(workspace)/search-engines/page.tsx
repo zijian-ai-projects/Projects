@@ -146,6 +146,24 @@ export default function SearchEnginesPage() {
                 placeholder={searchCopy.extraPlaceholder}
               />
             </label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <a
+                href={selectedEngine.apiUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium text-app-strong transition hover:border-black/20"
+              >
+                {searchCopy.apiLink}
+              </a>
+              <a
+                href={selectedEngine.tutorialUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium text-app-strong transition hover:border-black/20"
+              >
+                {searchCopy.tutorialLink}
+              </a>
+            </div>
           </div>
         </SectionCard>
       </div>

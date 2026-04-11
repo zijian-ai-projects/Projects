@@ -48,12 +48,28 @@ describe("SearchEnginesPage", () => {
 
     expect(tavilyCard).toHaveAttribute("aria-checked", "true");
     expect(googleCard).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("link", { name: "获取 API" })).toHaveAttribute(
+      "href",
+      "https://app.tavily.com/"
+    );
+    expect(screen.getByRole("link", { name: "查看教程" })).toHaveAttribute(
+      "href",
+      "https://docs.tavily.com/guides/quickstart"
+    );
 
     await user.click(googleCard);
 
     expect(googleCard).toHaveAttribute("aria-checked", "true");
     expect(tavilyCard).toHaveAttribute("aria-checked", "false");
     expect(screen.getByRole("heading", { level: 2, name: "Google" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "获取 API" })).toHaveAttribute(
+      "href",
+      "https://console.cloud.google.com/apis/credentials"
+    );
+    expect(screen.getByRole("link", { name: "查看教程" })).toHaveAttribute(
+      "href",
+      "https://developers.google.cn/custom-search/v1/introduction?hl=en"
+    );
     expect(screen.getByLabelText("API Key")).toHaveAttribute("type", "password");
     expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://customsearch.googleapis.com");
     expect(screen.getByLabelText("Engine ID / CX / App ID")).toBeInTheDocument();

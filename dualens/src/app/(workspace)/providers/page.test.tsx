@@ -39,6 +39,14 @@ describe("ProvidersPage", () => {
     expect(openAiCard).toHaveAttribute("aria-checked", "false");
     expect(deepSeekCard).toHaveAttribute("tabindex", "0");
     expect(openAiCard).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByRole("link", { name: "获取 API" })).toHaveAttribute(
+      "href",
+      "https://platform.deepseek.com/api_keys"
+    );
+    expect(screen.getByRole("link", { name: "查看教程" })).toHaveAttribute(
+      "href",
+      "https://api-docs.deepseek.com/"
+    );
 
     deepSeekCard.focus();
     await user.keyboard("{ArrowDown}");
@@ -50,6 +58,14 @@ describe("ProvidersPage", () => {
     expect(deepSeekCard).toHaveAttribute("tabindex", "-1");
 
     expect(screen.getByRole("heading", { level: 2, name: "OpenAI" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "获取 API" })).toHaveAttribute(
+      "href",
+      "https://platform.openai.com/api-keys"
+    );
+    expect(screen.getByRole("link", { name: "查看教程" })).toHaveAttribute(
+      "href",
+      "https://platform.openai.com/docs/quickstart"
+    );
     expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://api.openai.com/v1");
     expect(screen.getByLabelText("模型 ID")).toHaveValue("");
     expect(screen.getByLabelText("API Key")).toBeInTheDocument();

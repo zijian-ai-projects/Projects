@@ -45,6 +45,8 @@ type UiCopy = {
   unableToStartDebate: string;
   unableToAdvanceDebate: string;
   unableToStopDebate: string;
+  historyFolderReminder: string;
+  historySaveError: string;
   sessionErrors: {
     start: string;
     advance: string;
@@ -139,6 +141,10 @@ export const UI_COPY: Record<UiLanguage, UiCopy> = {
     unableToStartDebate: "Unable to start debate.",
     unableToAdvanceDebate: "Unable to advance debate.",
     unableToStopDebate: "Unable to stop debate.",
+    historyFolderReminder:
+      "Choose a history folder in Settings to save completed debates to history.",
+    historySaveError:
+      "History could not be saved to the selected folder. Choose the folder again in Settings.",
     sessionErrors: {
       start: "Unable to start debate.",
       advance: "Unable to advance debate.",
@@ -235,6 +241,8 @@ export const UI_COPY: Record<UiLanguage, UiCopy> = {
     unableToStartDebate: "无法开始辩论。",
     unableToAdvanceDebate: "无法推进辩论。",
     unableToStopDebate: "无法停止辩论。",
+    historyFolderReminder: "前往通用设置选择历史保存文件夹，即可将已完成辩论保存到历史。",
+    historySaveError: "历史记录未能写入已选择的文件夹，请在通用设置中重新选择文件夹。",
     sessionErrors: {
       start: "无法开始辩论。",
       advance: "无法推进辩论。",

@@ -160,6 +160,24 @@ export default function ProvidersPage() {
             <div className="rounded-[22px] border border-black/8 bg-black/[0.02] px-4 py-4 text-sm leading-6 text-app-muted">
               {providerCopy.keyHelpPrefix} {selectedProvider.name} {providerCopy.keyHelpSuffix}
             </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <a
+                href={selectedProvider.apiUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium text-app-strong transition hover:border-black/20"
+              >
+                {providerCopy.apiLink}
+              </a>
+              <a
+                href={selectedProvider.tutorialUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium text-app-strong transition hover:border-black/20"
+              >
+                {providerCopy.tutorialLink}
+              </a>
+            </div>
           </div>
         </SectionCard>
       </div>

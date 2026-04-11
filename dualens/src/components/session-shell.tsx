@@ -12,6 +12,11 @@ import { SectionCard } from "@/components/common/section-card";
 import { getUiCopy } from "@/lib/ui-copy";
 import { useOptionalDebateQuestionDraft } from "@/lib/debate-question-draft";
 import {
+  useOptionalDebateWorkspaceState,
+  type HistorySaveStatus,
+  type SessionErrorKind
+} from "@/lib/debate-workspace-state";
+import {
   persistSessionHistory,
   type HistoryRecordMeta
 } from "@/lib/history-file-writer";
@@ -33,7 +38,6 @@ import type {
 } from "@/lib/types";
 
 type UiCopy = ReturnType<typeof getUiCopy>;
-type SessionErrorKind = "start" | "advance" | "stop";
 const SESSION_DIAGNOSIS_STAGES = new Set<SessionDiagnosis["stage"]>(["research", "opening", "debate", "complete"]);
 const DIAGNOSTIC_CATEGORIES = new Set<SessionDiagnosis["category"]>([
   "auth",
@@ -338,24 +342,45 @@ export function SessionShell({
   stopSession?: (sessionId: string) => Promise<SessionView>;
   uiLanguage?: UiLanguage;
 }) {
-  const [session, setSession] = useState<SessionView | null>(null);
-  const [historyMeta, setHistoryMeta] = useState<
+  const workspaceState = useOptionalDebateWorkspaceState();
+  const [localSession, setLocalSession] = useState<SessionView | null>(null);
+  const [localHistoryMeta, setLocalHistoryMeta] = useState<
     (HistoryRecordMeta & { sessionId: string }) | null
   >(null);
-  const [errorKind, setErrorKind] = useState<SessionErrorKind | null>(null);
-  const [errorDetail, setErrorDetail] = useState<string | null>(null);
-  const [isStopping, setIsStopping] = useState(false);
+  const [localErrorKind, setLocalErrorKind] = useState<SessionErrorKind | null>(null);
+  const [localErrorDetail, setLocalErrorDetail] = useState<string | null>(null);
+  const [localIsStopping, setLocalIsStopping] = useState(false);
+  const [localHistorySaveStatus, setLocalHistorySaveStatus] = useState<HistorySaveStatus>("idle");
   const [localQuestionDraft, setLocalQuestionDraft] = useState("");
   const workspaceQuestionDraft = useOptionalDebateQuestionDraft();
   const persistQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const latestHistorySessionIdRef = useRef<string | null>(null);
   const uiCopy = getUiCopy(uiLanguage);
-  const questionDraft = workspaceQuestionDraft ?? {
+  const session = workspaceState?.session ?? localSession;
+  const setSession = workspaceState?.setSession ?? setLocalSession;
+  const historyMeta = workspaceState?.historyMeta ?? localHistoryMeta;
+  const setHistoryMeta = workspaceState?.setHistoryMeta ?? setLocalHistoryMeta;
+  const errorKind = workspaceState?.errorKind ?? localErrorKind;
+  const setErrorKind = workspaceState?.setErrorKind ?? setLocalErrorKind;
+  const errorDetail = workspaceState?.errorDetail ?? localErrorDetail;
+  const setErrorDetail = workspaceState?.setErrorDetail ?? setLocalErrorDetail;
+  const isStopping = workspaceState?.isStopping ?? localIsStopping;
+  const setIsStopping = workspaceState?.setIsStopping ?? setLocalIsStopping;
+  const historySaveStatus = workspaceState?.historySaveStatus ?? localHistorySaveStatus;
+  const setHistorySaveStatus = workspaceState?.setHistorySaveStatus ?? setLocalHistorySaveStatus;
+  const questionDraft = workspaceState ?? workspaceQuestionDraft ?? {
     question: localQuestionDraft,
     setQuestion: setLocalQuestionDraft
   };
   const errorMessage = errorKind
     ? [uiCopy.sessionErrors[errorKind], errorDetail].filter(Boolean).join(" ")
     : null;
+  const historySaveMessage =
+    session?.stage === "complete" && historySaveStatus === "skipped"
+      ? uiCopy.historyFolderReminder
+      : session?.stage === "complete" && historySaveStatus === "error"
+        ? uiCopy.historySaveError
+        : null;
   const handleSubmit = useCallback(
     async (input: SessionInput) => {
       const createdAt = new Date().toISOString();
@@ -364,6 +389,8 @@ export function SessionShell({
       setHistoryMeta(null);
       setErrorKind(null);
       setErrorDetail(null);
+      setIsStopping(false);
+      setHistorySaveStatus("idle");
       try {
         const providerConfig = loadActiveModelProviderRuntimeConfig();
         const searchConfig = loadActiveSearchEngineRuntimeConfig();
@@ -393,7 +420,15 @@ export function SessionShell({
         setErrorKind("start");
       }
     },
-    [createSession]
+    [
+      createSession,
+      setErrorDetail,
+      setErrorKind,
+      setHistoryMeta,
+      setHistorySaveStatus,
+      setIsStopping,
+      setSession
+    ]
   );
 
   useEffect(() => {
@@ -443,17 +478,26 @@ export function SessionShell({
         clearTimeout(timeoutId);
       }
     };
-  }, [continueSession, session]);
+  }, [continueSession, session, setErrorDetail, setErrorKind, setSession]);
 
   useEffect(() => {
     if (!session || !historyMeta) {
       return;
     }
 
+    latestHistorySessionIdRef.current = historyMeta.sessionId;
     persistQueueRef.current = persistQueueRef.current
       .catch(() => undefined)
-      .then(() => persistSessionHistory(historyMeta, session));
-  }, [historyMeta, session]);
+      .then(async () => {
+        const result = await persistSessionHistory(historyMeta, session);
+
+        if (latestHistorySessionIdRef.current === historyMeta.sessionId) {
+          setHistorySaveStatus(result.status);
+        }
+
+        return result;
+      });
+  }, [historyMeta, session, setHistorySaveStatus]);
 
   return (
     <div className="space-y-8">
@@ -466,6 +510,14 @@ export function SessionShell({
       {errorMessage ? (
         <p className="session-alert" role="alert">
           {errorMessage}
+        </p>
+      ) : null}
+      {historySaveMessage ? (
+        <p
+          className="session-alert"
+          role={historySaveStatus === "error" ? "alert" : "status"}
+        >
+          {historySaveMessage}
         </p>
       ) : null}
 

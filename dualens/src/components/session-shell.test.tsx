@@ -14,6 +14,7 @@ vi.mock("@/lib/history-file-writer", () => ({
 }));
 
 import { SessionShell, type SessionView } from "@/components/session-shell";
+import { DebateWorkspaceStateProvider } from "@/lib/debate-workspace-state";
 import { DebateQuestionDraftProvider } from "@/lib/debate-question-draft";
 
 afterEach(() => {
@@ -498,6 +499,142 @@ describe("SessionShell", () => {
     await waitFor(() => {
       expect(persistSessionHistory).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("preserves an active debate session when the debate page unmounts inside the workspace", async () => {
+    const user = setupUser();
+    const createSession = vi.fn().mockResolvedValue(
+      buildSession({
+        id: "active-session-1",
+        stage: "research",
+        researchProgress: {
+          stage: "searching-sources",
+          sourceCount: 1,
+          evidenceCount: 0,
+          previewItems: []
+        }
+      })
+    );
+    const continueSession = vi.fn(
+      () =>
+        new Promise<SessionView>(() => {
+          // Keep the debate active while route-level unmounting is exercised.
+        })
+    );
+
+    function WorkspaceHarness() {
+      const [showDebate, setShowDebate] = useState(true);
+
+      return (
+        <DebateWorkspaceStateProvider>
+          {showDebate ? (
+            <>
+              <button type="button" onClick={() => setShowDebate(false)}>
+                Open providers
+              </button>
+              <SessionShell
+                uiLanguage="en"
+                createSession={createSession}
+                continueSession={continueSession}
+              />
+            </>
+          ) : (
+            <>
+              <p>Provider page</p>
+              <button type="button" onClick={() => setShowDebate(true)}>
+                Back to debate
+              </button>
+            </>
+          )}
+        </DebateWorkspaceStateProvider>
+      );
+    }
+
+    render(<WorkspaceHarness />);
+
+    await user.type(screen.getByLabelText("Decision question"), "Should I move to Hangzhou?");
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    expect(await screen.findByText("Current session")).toBeInTheDocument();
+    expect(screen.getByLabelText("Decision question")).toHaveValue("Should I move to Hangzhou?");
+
+    await user.click(screen.getByRole("button", { name: "Open providers" }));
+
+    expect(screen.getByText("Provider page")).toBeInTheDocument();
+    expect(screen.queryByText("Current session")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back to debate" }));
+
+    expect(screen.getByText("Current session")).toBeInTheDocument();
+    expect(screen.getByLabelText("Decision question")).toHaveValue("Should I move to Hangzhou?");
+    expect(screen.getAllByText("Research in progress").length).toBeGreaterThan(0);
+  });
+
+  it("reminds users to choose a history folder after a completed debate is not saved", async () => {
+    const user = setupUser();
+    const createSession = vi.fn().mockResolvedValueOnce(
+      buildSession({
+        id: "session-no-folder",
+        stage: "research"
+      })
+    );
+    const continueSession = vi.fn().mockResolvedValueOnce(
+      buildSession({
+        id: "session-no-folder",
+        stage: "complete"
+      })
+    );
+
+    persistSessionHistory.mockResolvedValue({ status: "skipped" as const });
+
+    render(
+      <SessionShell
+        createSession={createSession}
+        continueSession={continueSession}
+        uiLanguage="en"
+      />
+    );
+
+    await user.type(screen.getByLabelText("Decision question"), "Should I move this year?");
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    expect(
+      await screen.findByText(
+        "Choose a history folder in Settings to save completed debates to history."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the history folder reminder after a completed debate is saved", async () => {
+    const user = setupUser();
+    const createSession = vi.fn().mockResolvedValueOnce(
+      buildSession({
+        id: "session-with-folder",
+        stage: "complete"
+      })
+    );
+
+    persistSessionHistory.mockResolvedValue({ status: "written" as const });
+
+    render(
+      <SessionShell
+        createSession={createSession}
+        continueSession={vi.fn()}
+        uiLanguage="en"
+      />
+    );
+
+    await user.type(screen.getByLabelText("Decision question"), "Should I move this year?");
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    await waitFor(() => {
+      expect(persistSessionHistory).toHaveBeenCalledTimes(1);
+    });
+    expect(
+      screen.queryByText(
+        "Choose a history folder in Settings to save completed debates to history."
+      )
+    ).not.toBeInTheDocument();
   });
 
   it("preserves the question draft when the debate page unmounts inside the workspace", async () => {

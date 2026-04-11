@@ -27,9 +27,10 @@ describe("ProvidersPage", () => {
     const providerList = screen.getByRole("radiogroup", { name: "AI 服务商" });
 
     expect(providerList).toBeInTheDocument();
-    expect(within(providerList).queryByText("已配置")).not.toBeInTheDocument();
-    expect(within(providerList).queryByText("未配置")).not.toBeInTheDocument();
+    expect(within(providerList).getByText("已配置")).toHaveClass("text-black");
+    expect(within(providerList).getAllByText("未配置").length).toBeGreaterThan(0);
     expect(within(providerList).queryByText("已接入")).not.toBeInTheDocument();
+    expect(providerList.querySelector("[data-tone]")).not.toBeInTheDocument();
 
     const deepSeekCard = screen.getByRole("radio", { name: "DeepSeek" });
     const openAiCard = screen.getByRole("radio", { name: "OpenAI" });

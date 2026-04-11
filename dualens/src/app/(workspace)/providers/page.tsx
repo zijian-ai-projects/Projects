@@ -88,6 +88,8 @@ export default function ProvidersPage() {
                 <SelectionCardItem
                   key={provider.id}
                   name={provider.name}
+                  configured={provider.configured}
+                  statusLabel={provider.configured ? providerCopy.configured : providerCopy.unconfigured}
                   active={provider.id === selectedProviderId}
                   icon={provider.icon}
                   tabIndex={itemProps.tabIndex}

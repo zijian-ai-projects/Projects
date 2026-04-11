@@ -7,6 +7,8 @@ import { useId } from "react";
 
 export function SelectionCardItem({
   name,
+  configured,
+  statusLabel,
   active,
   icon,
   tabIndex,
@@ -15,6 +17,8 @@ export function SelectionCardItem({
   buttonRef
 }: {
   name: string;
+  configured: boolean;
+  statusLabel: string;
   active: boolean;
   icon: ReactNode;
   tabIndex: number;
@@ -56,6 +60,16 @@ export function SelectionCardItem({
         </span>
         <span>
           <span id={nameId} className="block text-sm font-medium text-black">{name}</span>
+          <span
+            className={[
+              "mt-1 block text-xs",
+              configured
+                ? "font-medium text-black"
+                : "text-black/36 shadow-[0_1px_8px_rgba(0,0,0,0.08)]"
+            ].join(" ")}
+          >
+            {statusLabel}
+          </span>
         </span>
       </span>
     </button>

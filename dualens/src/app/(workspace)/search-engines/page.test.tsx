@@ -38,9 +38,10 @@ describe("SearchEnginesPage", () => {
     const engineList = screen.getByRole("radiogroup", { name: "搜索引擎" });
 
     expect(engineList).toBeInTheDocument();
-    expect(within(engineList).queryByText("已配置")).not.toBeInTheDocument();
-    expect(within(engineList).queryByText("未配置")).not.toBeInTheDocument();
+    expect(within(engineList).getByText("已配置")).toHaveClass("text-black");
+    expect(within(engineList).getAllByText("未配置").length).toBeGreaterThan(0);
     expect(within(engineList).queryByText("已接入")).not.toBeInTheDocument();
+    expect(engineList.querySelector("[data-tone]")).not.toBeInTheDocument();
 
     const tavilyCard = screen.getByRole("radio", { name: "Tavily" });
     const googleCard = screen.getByRole("radio", { name: "Google" });

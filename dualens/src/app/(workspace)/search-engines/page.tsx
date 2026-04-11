@@ -59,6 +59,8 @@ export default function SearchEnginesPage() {
                 <SelectionCardItem
                   key={engine.id}
                   name={engine.name}
+                  configured={engine.configured}
+                  statusLabel={engine.configured ? searchCopy.configured : searchCopy.unconfigured}
                   active={engine.id === selectedEngineId}
                   icon={engine.icon}
                   tabIndex={itemProps.tabIndex}

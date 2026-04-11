@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOpeningPrompt, buildSummaryPrompt } from "@/server/prompts";
+import { buildOpeningPrompt, buildSummaryPrompt, buildTurnAnalysisPrompt } from "@/server/prompts";
 import type { SessionRecord } from "@/lib/types";
 
 function createSession(overrides: Partial<SessionRecord> = {}): SessionRecord {
@@ -13,7 +13,9 @@ function createSession(overrides: Partial<SessionRecord> = {}): SessionRecord {
     firstSpeaker: "lumina",
     language: "en",
     stage: "debate",
+    debateMode: "shared-evidence",
     config: {
+      debateMode: "shared-evidence",
       sourceStrategy: "credible-first",
       searchDepth: "standard",
       roundCount: 1,
@@ -35,6 +37,7 @@ function createSession(overrides: Partial<SessionRecord> = {}): SessionRecord {
         dataPoints: ["Median rent increased 8% year over year"]
       }
     ],
+    privateEvidence: {},
     turns: [
       {
         id: "t1",
@@ -76,5 +79,75 @@ describe("prompt JSON instructions", () => {
     expect(prompt).toContain("Language: zh-CN");
     expect(prompt).toContain("Write every text field in zh-CN.");
     expect(prompt).toContain("Never print raw evidence ids in any text field.");
+  });
+
+  it("builds a structured analysis prompt for the opponent's previous turn", () => {
+    const prompt = buildTurnAnalysisPrompt(
+      createSession({
+        turns: [
+          {
+            id: "t1",
+            speaker: "Vigila",
+            content: "Rent always falls after a move.",
+            referencedEvidenceIds: []
+          }
+        ]
+      }),
+      "lumina",
+      []
+    );
+
+    expect(prompt).toContain("factualIssues");
+    expect(prompt).toContain("logicalIssues");
+    expect(prompt).toContain("valueIssues");
+    expect(prompt).toContain("Rent always falls after a move.");
+  });
+
+  it("limits private-mode turn prompts to the speaking side's private evidence", () => {
+    const session = createSession({
+      debateMode: "private-evidence",
+      config: {
+        debateMode: "private-evidence",
+        sourceStrategy: "credible-first",
+        searchDepth: "standard",
+        roundCount: 3,
+        summaryStyle: "balanced",
+        provider: {
+          baseUrl: "https://api.deepseek.com",
+          apiKey: "server-key",
+          model: "deepseek-chat"
+        }
+      },
+      privateEvidence: {
+        lumina: [
+          {
+            id: "lumina-e1",
+            title: "Lumina evidence",
+            url: "https://example.com/l",
+            sourceName: "L",
+            sourceType: "report",
+            summary: "Visible to Lumina."
+          }
+        ],
+        vigila: [
+          {
+            id: "vigila-e1",
+            title: "Vigila evidence",
+            url: "https://example.com/v",
+            sourceName: "V",
+            sourceType: "report",
+            summary: "Hidden from Lumina."
+          }
+        ]
+      }
+    });
+
+    const prompt = buildOpeningPrompt({
+      ...session,
+      evidence: session.privateEvidence?.lumina ?? []
+    });
+
+    expect(prompt).toContain("Lumina evidence");
+    expect(prompt).not.toContain("Vigila evidence");
   });
 });

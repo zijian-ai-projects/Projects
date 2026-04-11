@@ -34,6 +34,16 @@ function getHistoryStatusLabel(record: HistoryListRecord, copy: HistoryCopy) {
   }[record.status];
 }
 
+function getDebateModeLabel(record: HistoryListRecord, copy: HistoryCopy) {
+  return record.debateMode === "private-evidence"
+    ? copy.privateEvidenceMode
+    : copy.sharedEvidenceMode;
+}
+
+function formatAnalysisIssues(issues: string[], copy: HistoryCopy) {
+  return issues.length ? issues.join("；") : copy.noAnalysisIssues;
+}
+
 function DialogShell({
   title,
   children,
@@ -79,7 +89,10 @@ function HistoryRecordDetailsDialog({
   copy: HistoryCopy;
   onClose: () => void;
 }) {
-  const evidenceTitleById = new Map(record.evidence.map((item) => [item.id, item.title]));
+  const privateEvidenceItems = Object.values(record.privateEvidence).flat();
+  const evidenceTitleById = new Map(
+    [...record.evidence, ...privateEvidenceItems].map((item) => [item.id, item.title])
+  );
   const evidenceOrderById = new Map(record.evidence.map((item, index) => [item.id, index + 1]));
 
   return (
@@ -92,6 +105,7 @@ function HistoryRecordDetailsDialog({
             <p>{copy.statusPrefix}：{getHistoryStatusLabel(record, copy)}</p>
             <p>{copy.modelPrefix}：{record.model}</p>
             <p>{copy.searchEnginePrefix}：{record.searchEngine}</p>
+            <p>{copy.debateModePrefix}：{getDebateModeLabel(record, copy)}</p>
             <p>{copy.rolePrefix}：{record.roleSummary}</p>
             <p>{copy.evidencePrefix}：{record.evidenceCount}</p>
             <p>{copy.turnPrefix}：{record.turnCount}</p>
@@ -152,6 +166,42 @@ function HistoryRecordDetailsDialog({
                       {turn.speaker}
                     </span>
                   </div>
+                  {turn.analysis ? (
+                    <div className="mt-3 rounded-[8px] border border-black/8 bg-black/[0.02] p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-app-muted">
+                        {copy.analysisTitle}
+                      </p>
+                      <div className="mt-2 space-y-1 text-app-foreground">
+                        <p>
+                          {copy.factualIssuesPrefix}：{formatAnalysisIssues(turn.analysis.factualIssues, copy)}
+                        </p>
+                        <p>
+                          {copy.logicalIssuesPrefix}：{formatAnalysisIssues(turn.analysis.logicalIssues, copy)}
+                        </p>
+                        <p>
+                          {copy.valueIssuesPrefix}：{formatAnalysisIssues(turn.analysis.valueIssues, copy)}
+                        </p>
+                        <p>{copy.searchFocusPrefix}：{turn.analysis.searchFocus}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                  {turn.privateEvidenceIds?.length ? (
+                    <div className="mt-3 rounded-[8px] border border-black/8 bg-black/[0.02] p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-app-muted">
+                        {copy.privateEvidenceTitle}
+                      </p>
+                      <ul className="mt-2 flex flex-wrap gap-2">
+                        {turn.privateEvidenceIds.map((evidenceId) => (
+                          <li
+                            key={`${turn.id}-private-${evidenceId}`}
+                            className="rounded-full bg-white px-2.5 py-1 text-xs text-app-strong"
+                          >
+                            {turn.speaker}：{evidenceTitleById.get(evidenceId) ?? evidenceId}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   <p className="mt-3 text-app-foreground">{turn.content}</p>
                   {turn.referencedEvidenceIds.length ? (
                     <ul className="mt-3 flex flex-wrap gap-2">
@@ -365,6 +415,7 @@ export function HistoryPageContent({
               debateWorkspaceState?.setQuestion(record.question);
               debateWorkspaceState?.setDraftPresetSelection(record.presetSelection);
               debateWorkspaceState?.setDraftFirstSpeaker(record.firstSpeaker);
+              debateWorkspaceState?.setDraftDebateMode(record.debateMode);
               debateWorkspaceState?.setSession(null);
               debateWorkspaceState?.setHistoryMeta(null);
               debateWorkspaceState?.setErrorKind(null);

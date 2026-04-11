@@ -11,7 +11,7 @@ import {
 } from "react";
 import type { SessionView } from "@/components/session-shell";
 import type { HistoryRecordMeta } from "@/lib/history-file-writer";
-import type { DebatePresetSelection, SpeakerSideKey } from "@/lib/types";
+import type { DebateMode, DebatePresetSelection, SpeakerSideKey } from "@/lib/types";
 
 export type SessionErrorKind = "start" | "advance" | "stop";
 export type HistorySaveStatus = "idle" | "written" | "skipped" | "error";
@@ -37,6 +37,8 @@ type DebateWorkspaceStateValue = {
   setDraftPresetSelection: Dispatch<SetStateAction<DebatePresetSelection | null>>;
   draftFirstSpeaker: SpeakerSideKey | null;
   setDraftFirstSpeaker: Dispatch<SetStateAction<SpeakerSideKey | null>>;
+  draftDebateMode: DebateMode | null;
+  setDraftDebateMode: Dispatch<SetStateAction<DebateMode | null>>;
 };
 
 const DebateWorkspaceStateContext = createContext<DebateWorkspaceStateValue | null>(null);
@@ -51,6 +53,7 @@ export function DebateWorkspaceStateProvider({ children }: { children: ReactNode
   const [historySaveStatus, setHistorySaveStatus] = useState<HistorySaveStatus>("idle");
   const [draftPresetSelection, setDraftPresetSelection] = useState<DebatePresetSelection | null>(null);
   const [draftFirstSpeaker, setDraftFirstSpeaker] = useState<SpeakerSideKey | null>(null);
+  const [draftDebateMode, setDraftDebateMode] = useState<DebateMode | null>(null);
 
   const value = useMemo(
     () => ({
@@ -71,9 +74,12 @@ export function DebateWorkspaceStateProvider({ children }: { children: ReactNode
       draftPresetSelection,
       setDraftPresetSelection,
       draftFirstSpeaker,
-      setDraftFirstSpeaker
+      setDraftFirstSpeaker,
+      draftDebateMode,
+      setDraftDebateMode
     }),
     [
+      draftDebateMode,
       draftFirstSpeaker,
       draftPresetSelection,
       errorDetail,

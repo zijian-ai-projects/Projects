@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
+import userEvent from "@testing-library/user-event";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -163,5 +164,26 @@ describe("QuestionForm", () => {
 
     expect(html).not.toContain("Tavily");
     expect(html).toContain("未配置");
+  });
+
+  it("shows the current debate mode and submits the selected mode", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+
+    render(<QuestionForm onSubmit={onSubmit} uiLanguage="zh-CN" />);
+
+    expect(screen.getByRole("button", { name: /共证衡辩/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /共证衡辩/ }));
+    expect(screen.getByRole("button", { name: /隔证三辩/ })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("决策问题"), "我应该为了工作搬到另一个城市吗？");
+    await user.click(screen.getByRole("button", { name: "开始辩论" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debateMode: "private-evidence"
+      })
+    );
   });
 });

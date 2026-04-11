@@ -13,6 +13,7 @@ import { loadActiveSearchEngineDisplay } from "@/lib/search-engine-preferences";
 import { getLocalizedSideIdentityCopy } from "@/lib/side-identities";
 import { getUiCopy } from "@/lib/ui-copy";
 import type {
+  DebateMode,
   SpeakerSideKey,
   TemperamentOption,
   TemperamentPairId,
@@ -32,7 +33,9 @@ function QuestionFormImpl({
   presetSelectionValue,
   onPresetSelectionChange,
   firstSpeakerValue,
-  onFirstSpeakerChange
+  onFirstSpeakerChange,
+  debateModeValue,
+  onDebateModeChange
 }: {
   onSubmit(input: SessionInput): Promise<void>;
   uiLanguage?: UiLanguage;
@@ -42,6 +45,8 @@ function QuestionFormImpl({
   onPresetSelectionChange?: (presetSelection: SessionInput["presetSelection"]) => void;
   firstSpeakerValue?: SpeakerSideKey;
   onFirstSpeakerChange?: (firstSpeaker: SpeakerSideKey) => void;
+  debateModeValue?: DebateMode;
+  onDebateModeChange?: (debateMode: DebateMode) => void;
 }) {
   const [localQuestion, setLocalQuestion] = useState("");
   const [localTemperamentPairId, setLocalTemperamentPairId] = useState<TemperamentPairId>(
@@ -51,6 +56,7 @@ function QuestionFormImpl({
     presetLibrary.TEMPERAMENT_PAIRS[0]?.options[0] ?? "cautious"
   );
   const [localFirstSpeaker, setLocalFirstSpeaker] = useState<SpeakerSideKey>("lumina");
+  const [localDebateMode, setLocalDebateMode] = useState<DebateMode>("shared-evidence");
   const [selectedModelLabel, setSelectedModelLabel] = useState<string | null>(null);
   const [isSelectedModelConfigured, setIsSelectedModelConfigured] = useState(false);
   const [selectedSearchEngineLabel, setSelectedSearchEngineLabel] = useState<string | null>(null);
@@ -70,6 +76,7 @@ function QuestionFormImpl({
   const temperamentPairId = presetSelection.pairId;
   const luminaTemperament = presetSelection.luminaTemperament as TemperamentOption;
   const firstSpeaker = firstSpeakerValue ?? localFirstSpeaker;
+  const debateMode = debateModeValue ?? localDebateMode;
   const setPresetSelection = (nextPresetSelection: SessionInput["presetSelection"]) => {
     if (onPresetSelectionChange) {
       onPresetSelectionChange(nextPresetSelection);
@@ -86,6 +93,14 @@ function QuestionFormImpl({
     }
 
     setLocalFirstSpeaker(nextFirstSpeaker);
+  };
+  const setDebateMode = (nextDebateMode: DebateMode) => {
+    if (onDebateModeChange) {
+      onDebateModeChange(nextDebateMode);
+      return;
+    }
+
+    setLocalDebateMode(nextDebateMode);
   };
   const selectedPair =
     presetLibrary.getTemperamentPairById(temperamentPairId) ?? presetLibrary.TEMPERAMENT_PAIRS[0];
@@ -115,6 +130,9 @@ function QuestionFormImpl({
           currentModelLabel: "Current model",
           currentSearchEngineLabel: "Current search engine",
           unconfiguredLabel: "Not configured",
+          debateModeLabel: "Debate mode",
+          sharedEvidenceMode: "Shared evidence debate",
+          privateEvidenceMode: "Private evidence three-round debate",
           styleLabel: "Style"
         }
       : {
@@ -128,6 +146,9 @@ function QuestionFormImpl({
           currentModelLabel: "当前模型",
           currentSearchEngineLabel: "当前搜索引擎",
           unconfiguredLabel: "未配置",
+          debateModeLabel: "辩论模式",
+          sharedEvidenceMode: "共证衡辩",
+          privateEvidenceMode: "隔证三辩",
           styleLabel: "风格"
         };
 
@@ -173,42 +194,57 @@ function QuestionFormImpl({
   const searchEngineSummary = isSelectedSearchEngineConfigured && selectedSearchEngineLabel
     ? selectedSearchEngineLabel
     : sectionCopy.unconfiguredLabel;
+  const debateModeLabel =
+    debateMode === "private-evidence"
+      ? sectionCopy.privateEvidenceMode
+      : sectionCopy.sharedEvidenceMode;
+  const nextDebateMode = debateMode === "shared-evidence" ? "private-evidence" : "shared-evidence";
   const runtimeControls = (
-    <div
-      data-testid="debate-action-row"
-      className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end"
-    >
-      <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
-        <Link
-          href="/providers"
-          aria-label={`${sectionCopy.currentModelLabel}: ${modelSummary}`}
-          className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5 transition hover:border-black/16 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
-        >
-          <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
-            {sectionCopy.currentModelLabel}
-          </p>
-          <p className="mt-1 text-sm font-medium text-app-strong">
-            {modelSummary}
-          </p>
-        </Link>
-        <Link
-          href="/search-engines"
-          aria-label={`${sectionCopy.currentSearchEngineLabel}: ${searchEngineSummary}`}
-          className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5 transition hover:border-black/16 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
-        >
-          <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
-            {sectionCopy.currentSearchEngineLabel}
-          </p>
-          <p className="mt-1 text-sm font-medium text-app-strong">
-            {searchEngineSummary}
-          </p>
-        </Link>
+    <div className="relative">
+      <div
+        data-testid="debate-action-row"
+        className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end"
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
+          <Link
+            href="/providers"
+            aria-label={`${sectionCopy.currentModelLabel}: ${modelSummary}`}
+            className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5 transition hover:border-black/16 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+          >
+            <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
+              {sectionCopy.currentModelLabel}
+            </p>
+            <p className="mt-1 text-sm font-medium text-app-strong">
+              {modelSummary}
+            </p>
+          </Link>
+          <Link
+            href="/search-engines"
+            aria-label={`${sectionCopy.currentSearchEngineLabel}: ${searchEngineSummary}`}
+            className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5 transition hover:border-black/16 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+          >
+            <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
+              {sectionCopy.currentSearchEngineLabel}
+            </p>
+            <p className="mt-1 text-sm font-medium text-app-strong">
+              {searchEngineSummary}
+            </p>
+          </Link>
+        </div>
+        <div className="flex justify-start lg:shrink-0 lg:justify-end">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
+          </Button>
+        </div>
       </div>
-      <div className="flex justify-start lg:shrink-0 lg:justify-end">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
-        </Button>
-      </div>
+      <button
+        type="button"
+        data-testid="debate-mode-switch"
+        className="absolute right-0 top-full mt-2 rounded-[8px] border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-black"
+        onClick={() => setDebateMode(nextDebateMode)}
+      >
+        {sectionCopy.debateModeLabel}：{debateModeLabel}
+      </button>
     </div>
   );
 
@@ -229,6 +265,7 @@ function QuestionFormImpl({
         try {
           const input: SessionInput = {
             question: trimmedQuestion,
+            debateMode,
             presetSelection: {
               pairId: temperamentPairId,
               luminaTemperament

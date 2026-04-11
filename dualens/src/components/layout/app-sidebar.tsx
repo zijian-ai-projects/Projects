@@ -52,7 +52,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <div className={["flex h-full flex-col py-6", collapsed ? "px-3" : "px-5"].join(" ")}>
       <Link
-        href="/debate"
+        href="/product"
         aria-label="两仪决"
         title={collapsed ? "两仪决" : undefined}
         className={[

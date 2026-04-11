@@ -27,6 +27,39 @@ function createSessionInput(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function createAnalysisSession(): SessionRecord {
+  return {
+    id: "analysis-session",
+    debateMode: "shared-evidence",
+    question: "Should I move to another city for a job?",
+    presetSelection: {
+      pairId: "cautious-aggressive",
+      luminaTemperament: "cautious"
+    },
+    firstSpeaker: "lumina",
+    language: "en",
+    stage: "debate",
+    config: {
+      debateMode: "shared-evidence",
+      sourceStrategy: "credible-first",
+      searchDepth: "standard",
+      roundCount: 3,
+      summaryStyle: "balanced",
+      provider: providerConfig
+    },
+    evidence: [],
+    privateEvidence: {},
+    turns: [
+      {
+        id: "t1",
+        speaker: "Vigila",
+        content: "Rent always falls after a move.",
+        referencedEvidenceIds: []
+      }
+    ]
+  };
+}
+
 describe("orchestrator", () => {
   it("creates a session in research stage and then advances to opening", async () => {
     const store = createSessionStore();
@@ -49,6 +82,27 @@ describe("orchestrator", () => {
 
     const advanced = await orchestrator.continueSession(session.id);
     expect(advanced.stage).toBe("opening");
+  });
+
+  it("defaults sessions to shared-evidence debate mode", async () => {
+    const store = createSessionStore();
+    const orchestrator = createOrchestrator(store, {
+      runSharedResearch: async () => [],
+      runOpeningRound: async (session) => session,
+      runDebateRound: async (session) => session,
+      runSummary: async () => ({
+        strongestFor: [],
+        strongestAgainst: [],
+        coreDisagreement: "",
+        keyUncertainty: "",
+        nextAction: ""
+      })
+    });
+
+    const session = await orchestrator.createSession(createSessionInput());
+
+    expect(session.debateMode).toBe("shared-evidence");
+    expect(session.config.debateMode).toBe("shared-evidence");
   });
 
   it("persists research progress metadata while moving into opening", async () => {
@@ -381,6 +435,7 @@ describe("orchestrator", () => {
 
     const session: SessionRecord = {
       id: "session-1",
+      debateMode: "shared-evidence",
       question: "Should I move to another city for a job?",
       presetSelection: {
         pairId: "cautious-aggressive",
@@ -390,6 +445,7 @@ describe("orchestrator", () => {
       language: "en",
       stage: "opening",
       config: {
+        debateMode: "shared-evidence",
         sourceStrategy: "credible-first",
         searchDepth: "standard",
         roundCount: 3,
@@ -406,6 +462,7 @@ describe("orchestrator", () => {
           summary: "A sample evidence item."
         }
       ],
+      privateEvidence: {},
       turns: []
     };
 
@@ -416,6 +473,26 @@ describe("orchestrator", () => {
     expect(prompt).toContain("Lumina: Cautious");
     expect(prompt).toContain("Vigila: Aggressive");
     expect(prompt).toContain("Speaker: Lumina");
+  });
+
+  it("can request structured pre-speech analysis", async () => {
+    let schemaName = "";
+    const agent = createDebateAgent({
+      complete: async (_messages, nextSchemaName) => {
+        schemaName = nextSchemaName;
+        return {
+          factualIssues: ["Unsupported rent claim."],
+          logicalIssues: [],
+          valueIssues: [],
+          searchFocus: "rent trend data"
+        } as never;
+      }
+    });
+
+    const analysis = await agent.createTurnAnalysis(createAnalysisSession(), "lumina", []);
+
+    expect(schemaName).toBe("DebateTurnAnalysis");
+    expect(analysis.searchFocus).toBe("rent trend data");
   });
 });
 
@@ -439,7 +516,8 @@ describe("ux pass session config", () => {
       language: "zh-CN",
       model: "deepseek-chat",
       config: {
-        roundCount: 2
+        roundCount: 2,
+        debateMode: "private-evidence"
       }
     });
 
@@ -447,5 +525,6 @@ describe("ux pass session config", () => {
     expect(parsed.presetSelection.pairId).toBe("rational-intuitive");
     expect(parsed.presetSelection.luminaTemperament).toBe("rational");
     expect(parsed.model).toBe("deepseek-chat");
+    expect(parsed.config?.debateMode).toBe("private-evidence");
   });
 });

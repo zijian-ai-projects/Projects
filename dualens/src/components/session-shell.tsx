@@ -28,7 +28,11 @@ import {
 import type {
   AppLanguage,
   DebatePresetSelection,
+  DebateMode,
+  DebateTurnAnalysis,
+  Evidence,
   OpenAICompatibleProviderConfig,
+  PrivateEvidencePools,
   SearchEngineRuntimeConfig,
   SessionDiagnosis,
   ResearchPreviewItem,
@@ -60,6 +64,7 @@ const SESSION_POLL_INTERVAL_MS = process.env.NODE_ENV === "test" ? 0 : 1000;
 
 export type SessionInput = {
   question: string;
+  debateMode: DebateMode;
   presetSelection: DebatePresetSelection;
   firstSpeaker: "lumina" | "vigila";
   language: AppLanguage;
@@ -70,7 +75,15 @@ export type SessionInput = {
 
 export type SessionView = Pick<
   SessionRecord,
-  "id" | "stage" | "evidence" | "turns" | "summary" | "researchProgress" | "diagnosis"
+  | "id"
+  | "debateMode"
+  | "stage"
+  | "evidence"
+  | "privateEvidence"
+  | "turns"
+  | "summary"
+  | "researchProgress"
+  | "diagnosis"
 >;
 
 async function createDemoSession(input: SessionInput): Promise<SessionView> {
@@ -142,13 +155,52 @@ function isEvidence(value: unknown): value is SessionView["evidence"][number] {
   );
 }
 
+function isSpeakerSideKey(value: unknown): value is SessionRecord["firstSpeaker"] {
+  return value === "lumina" || value === "vigila";
+}
+
+function isDebateMode(value: unknown): value is DebateMode {
+  return value === "shared-evidence" || value === "private-evidence";
+}
+
+function isDebateTurnAnalysis(value: unknown): value is DebateTurnAnalysis {
+  return (
+    isRecord(value) &&
+    isStringArray(value.factualIssues) &&
+    isStringArray(value.logicalIssues) &&
+    isStringArray(value.valueIssues) &&
+    typeof value.searchFocus === "string"
+  );
+}
+
+function isPrivateEvidencePools(value: unknown): value is PrivateEvidencePools {
+  if (value === undefined) {
+    return true;
+  }
+
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return Object.entries(value).every(
+    ([side, evidence]) =>
+      isSpeakerSideKey(side) &&
+      Array.isArray(evidence) &&
+      evidence.every((item): item is Evidence => isEvidence(item))
+  );
+}
+
 function isDebateTurn(value: unknown): value is SessionView["turns"][number] {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
     typeof value.speaker === "string" &&
     typeof value.content === "string" &&
-    isStringArray(value.referencedEvidenceIds)
+    isStringArray(value.referencedEvidenceIds) &&
+    (value.side === undefined || isSpeakerSideKey(value.side)) &&
+    (value.round === undefined || typeof value.round === "number") &&
+    (value.analysis === undefined || isDebateTurnAnalysis(value.analysis)) &&
+    (value.privateEvidenceIds === undefined || isStringArray(value.privateEvidenceIds))
   );
 }
 
@@ -206,10 +258,12 @@ function isSessionViewResponse(value: unknown): value is SessionView {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
+    isDebateMode(value.debateMode) &&
     typeof value.stage === "string" &&
     SESSION_VIEW_STAGES.has(value.stage as SessionStage) &&
     Array.isArray(value.evidence) &&
     value.evidence.every(isEvidence) &&
+    isPrivateEvidencePools(value.privateEvidence) &&
     Array.isArray(value.turns) &&
     value.turns.every(isDebateTurn) &&
     (value.summary === undefined || isDebateSummary(value.summary)) &&
@@ -396,6 +450,7 @@ export function SessionShell({
         const searchConfig = loadActiveSearchEngineRuntimeConfig();
         const payload: SessionInput = {
           question: input.question,
+          debateMode: input.debateMode,
           presetSelection: input.presetSelection,
           firstSpeaker: input.firstSpeaker,
           language: input.language,
@@ -510,6 +565,8 @@ export function SessionShell({
         onPresetSelectionChange={workspaceState?.setDraftPresetSelection}
         firstSpeakerValue={workspaceState?.draftFirstSpeaker ?? undefined}
         onFirstSpeakerChange={workspaceState?.setDraftFirstSpeaker}
+        debateModeValue={workspaceState?.draftDebateMode ?? undefined}
+        onDebateModeChange={workspaceState?.setDraftDebateMode}
       />
       {errorMessage ? (
         <p className="session-alert" role="alert">

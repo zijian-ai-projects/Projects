@@ -37,9 +37,12 @@ describe("AppShell", () => {
     );
 
     const aside = container.querySelector("aside");
+    const background = container.querySelector('[data-testid="workspace-ink-background"]');
     const nav = screen.getByRole("navigation", { name: "主导航" });
 
     expect(aside).toHaveClass("w-[280px]");
+    expect(background).toHaveAttribute("aria-hidden", "true");
+    expect(background).toHaveClass("absolute", "pointer-events-none");
     expect(within(nav).getByText("配置问题、角色与模型")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "收起菜单" }));

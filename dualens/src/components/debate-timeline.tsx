@@ -9,6 +9,10 @@ import {
   replaceEvidenceIdsInText
 } from "@/lib/evidence-reference";
 
+function formatAnalysisIssues(issues: string[], fallback: string) {
+  return issues.length ? issues.join("；") : fallback;
+}
+
 export function DebateTimeline({
   turns,
   evidence,
@@ -42,7 +46,51 @@ export function DebateTimeline({
                     {turn.speaker}
                   </span>
                 </div>
-                <p className="text-sm leading-6 text-ink">
+                {turn.analysis ? (
+                  <div className="mt-3 rounded-[8px] border border-black/8 bg-paper/70 p-3 text-sm leading-6 text-ink">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">
+                      {copy.turnAnalysisTitle}
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      <p>
+                        {copy.factualIssuesLabel}：{formatAnalysisIssues(turn.analysis.factualIssues, copy.noAnalysisIssues)}
+                      </p>
+                      <p>
+                        {copy.logicalIssuesLabel}：{formatAnalysisIssues(turn.analysis.logicalIssues, copy.noAnalysisIssues)}
+                      </p>
+                      <p>
+                        {copy.valueIssuesLabel}：{formatAnalysisIssues(turn.analysis.valueIssues, copy.noAnalysisIssues)}
+                      </p>
+                      <p>{copy.searchFocusLabel}：{turn.analysis.searchFocus}</p>
+                    </div>
+                  </div>
+                ) : null}
+                {turn.privateEvidenceIds?.length ? (
+                  <div className="mt-3 rounded-[8px] border border-black/8 bg-paper/70 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">
+                      {copy.privateEvidenceTitle}
+                    </p>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {turn.privateEvidenceIds.map((evidenceId) => (
+                        <li
+                          key={`${turn.id}-private-${evidenceId}`}
+                          className="rounded-full bg-white px-2.5 py-1 text-xs text-ink/70"
+                          title={evidenceById.get(evidenceId)?.sourceName}
+                        >
+                          {turn.speaker}：{formatEvidenceReference(
+                            evidenceId,
+                            evidenceOrder,
+                            copy.evidenceReferenceLabel
+                          )}
+                          {evidenceById.get(evidenceId)?.title
+                            ? ` · ${evidenceById.get(evidenceId)?.title}`
+                            : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <p className="mt-3 text-sm leading-6 text-ink">
                   {replaceEvidenceIdsInText(turn.content, evidenceOrder, copy.evidenceReferenceLabel)}
                 </p>
                 {turn.referencedEvidenceIds.length > 0 ? (

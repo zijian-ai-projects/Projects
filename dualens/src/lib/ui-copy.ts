@@ -56,6 +56,13 @@ type UiCopy = {
   debateTimelineTitle: string;
   debateTimelineEmptyState: string;
   turnLabel: string;
+  turnAnalysisTitle: string;
+  factualIssuesLabel: string;
+  logicalIssuesLabel: string;
+  valueIssuesLabel: string;
+  searchFocusLabel: string;
+  noAnalysisIssues: string;
+  privateEvidenceTitle: string;
   evidenceReferenceLabel: string;
   sharedEvidenceTitle: string;
   evidencePreviewTitle: string;
@@ -155,6 +162,13 @@ export const UI_COPY: Record<UiLanguage, UiCopy> = {
     debateTimelineEmptyState:
       "The opening positions and rebuttals will appear here after research finishes and the first turns are drafted.",
     turnLabel: "Turn",
+    turnAnalysisTitle: "Pre-speech analysis",
+    factualIssuesLabel: "Factual issues",
+    logicalIssuesLabel: "Logical issues",
+    valueIssuesLabel: "Value issues",
+    searchFocusLabel: "Search focus",
+    noAnalysisIssues: "None recorded",
+    privateEvidenceTitle: "Private evidence",
     evidenceReferenceLabel: "Evidence",
     sharedEvidenceTitle: "Shared evidence",
     evidencePreviewTitle: "Evidence preview",
@@ -253,6 +267,13 @@ export const UI_COPY: Record<UiLanguage, UiCopy> = {
     debateTimelineEmptyState:
       "当研究结束并完成首轮发言后，开场立场和反驳将显示在这里。",
     turnLabel: "回合",
+    turnAnalysisTitle: "发言前分析",
+    factualIssuesLabel: "事实问题",
+    logicalIssuesLabel: "逻辑问题",
+    valueIssuesLabel: "价值问题",
+    searchFocusLabel: "检索焦点",
+    noAnalysisIssues: "未记录",
+    privateEvidenceTitle: "私有证据",
     evidenceReferenceLabel: "证据",
     sharedEvidenceTitle: "共享证据",
     evidencePreviewTitle: "证据预览",

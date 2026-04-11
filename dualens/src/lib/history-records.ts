@@ -6,10 +6,12 @@ import {
 } from "@/lib/presets";
 import type {
   AppLanguage,
+  DebateMode,
   DebateTurn,
   DebateSummary,
   DebatePresetSelection,
   Evidence,
+  PrivateEvidencePools,
   SessionDiagnosis,
   SessionStage,
   SpeakerSideKey,
@@ -21,6 +23,7 @@ type HistoryStatus = "complete" | "running" | "failed";
 export type HistoryListRecord = {
   id: string;
   fileName: string;
+  debateMode: DebateMode;
   question: string;
   createdAt: string;
   createdAtIso: string;
@@ -33,6 +36,7 @@ export type HistoryListRecord = {
   presetSelection: DebatePresetSelection;
   firstSpeaker: SpeakerSideKey;
   evidence: Evidence[];
+  privateEvidence: PrivateEvidencePools;
   turns: DebateTurn[];
   evidenceCount: number;
   turnCount: number;
@@ -42,6 +46,7 @@ export type HistoryListRecord = {
 
 type StoredHistoryRecord = {
   id: string;
+  debateMode?: DebateMode;
   createdAt: string;
   question: string;
   model: string;
@@ -51,6 +56,7 @@ type StoredHistoryRecord = {
   language?: AppLanguage;
   stage: SessionStage;
   evidence?: unknown;
+  privateEvidence?: unknown;
   turns?: unknown;
   summary?: unknown;
   diagnosis?: unknown;
@@ -97,6 +103,10 @@ function isSpeakerSideKey(value: unknown): value is SpeakerSideKey {
   return value === "lumina" || value === "vigila";
 }
 
+function isDebateMode(value: unknown): value is DebateMode {
+  return value === "shared-evidence" || value === "private-evidence";
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
@@ -120,7 +130,16 @@ function isDebateTurn(value: unknown): value is DebateTurn {
     typeof value.id === "string" &&
     typeof value.speaker === "string" &&
     typeof value.content === "string" &&
-    isStringArray(value.referencedEvidenceIds)
+    isStringArray(value.referencedEvidenceIds) &&
+    (value.side === undefined || isSpeakerSideKey(value.side)) &&
+    (value.round === undefined || typeof value.round === "number") &&
+    (value.privateEvidenceIds === undefined || isStringArray(value.privateEvidenceIds)) &&
+    (value.analysis === undefined ||
+      (isRecord(value.analysis) &&
+        isStringArray(value.analysis.factualIssues) &&
+        isStringArray(value.analysis.logicalIssues) &&
+        isStringArray(value.analysis.valueIssues) &&
+        typeof value.analysis.searchFocus === "string"))
   );
 }
 
@@ -143,6 +162,25 @@ function isDebateSummary(value: unknown): value is DebateSummary {
 
 function getEvidenceList(value: unknown): Evidence[] {
   return Array.isArray(value) ? value.filter(isEvidence) : [];
+}
+
+function getPrivateEvidencePools(value: unknown): PrivateEvidencePools {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce<PrivateEvidencePools>((pools, [side, evidence]) => {
+    if (!isSpeakerSideKey(side)) {
+      return pools;
+    }
+
+    const evidenceList = getEvidenceList(evidence);
+    if (evidenceList.length > 0) {
+      pools[side] = evidenceList;
+    }
+
+    return pools;
+  }, {});
 }
 
 function getDebateTurns(value: unknown): DebateTurn[] {
@@ -203,6 +241,7 @@ function isStoredHistoryRecord(value: unknown): value is StoredHistoryRecord {
     typeof value.createdAt === "string" &&
     typeof value.question === "string" &&
     typeof value.model === "string" &&
+    (value.debateMode === undefined || isDebateMode(value.debateMode)) &&
     (value.searchEngine === undefined || typeof value.searchEngine === "string") &&
     typeof value.presetSelection.pairId === "string" &&
     typeof value.presetSelection.luminaTemperament === "string" &&
@@ -264,6 +303,7 @@ async function readHistoryFile(fileHandle: ReadableFileHandle): Promise<HistoryL
     }
 
     const evidence = getEvidenceList(parsed.evidence);
+    const privateEvidence = getPrivateEvidencePools(parsed.privateEvidence);
     const turns = getDebateTurns(parsed.turns);
     const summary = getDebateSummary(parsed.summary);
     const diagnosis = isSessionDiagnosis(parsed.diagnosis) ? parsed.diagnosis : undefined;
@@ -271,6 +311,7 @@ async function readHistoryFile(fileHandle: ReadableFileHandle): Promise<HistoryL
     return {
       id: parsed.id,
       fileName: fileHandle.name,
+      debateMode: parsed.debateMode ?? "shared-evidence",
       question: parsed.question,
       createdAt: formatHistoryDate(parsed.createdAt),
       createdAtIso: parsed.createdAt,
@@ -283,6 +324,7 @@ async function readHistoryFile(fileHandle: ReadableFileHandle): Promise<HistoryL
       presetSelection: parsed.presetSelection,
       firstSpeaker: parsed.firstSpeaker ?? "lumina",
       evidence,
+      privateEvidence,
       turns,
       evidenceCount: evidence.length,
       turnCount: turns.length,

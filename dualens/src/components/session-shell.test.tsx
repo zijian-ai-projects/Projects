@@ -41,8 +41,10 @@ function createDeferred<T>() {
 function buildSession(overrides: Partial<SessionView> & Pick<SessionView, "id" | "stage">): SessionView {
   return {
     id: overrides.id,
+    debateMode: overrides.debateMode ?? "shared-evidence",
     stage: overrides.stage,
     evidence: overrides.evidence ?? [],
+    privateEvidence: overrides.privateEvidence ?? {},
     turns: overrides.turns ?? [],
     summary: overrides.summary,
     researchProgress: overrides.researchProgress,
@@ -117,6 +119,7 @@ describe("SessionShell", () => {
 
     expect(createSession).toHaveBeenCalledWith({
       question: "Should I move to another city?",
+      debateMode: "shared-evidence",
       presetSelection: {
         pairId: "cautious-aggressive",
         luminaTemperament: "cautious"
@@ -151,7 +154,59 @@ describe("SessionShell", () => {
 
     expect(createSession).toHaveBeenCalledWith(
       expect.objectContaining({
+        debateMode: "shared-evidence",
         firstSpeaker: "vigila"
+      })
+    );
+  });
+
+  it("submits and preserves the selected debate mode across workspace page switches", async () => {
+    const user = setupUser();
+    const createSession = vi.fn().mockResolvedValue(
+      buildSession({
+        id: "s-mode",
+        debateMode: "private-evidence",
+        stage: "research"
+      })
+    );
+
+    function Harness() {
+      const [route, setRoute] = useState<"debate" | "other">("debate");
+
+      return (
+        <DebateWorkspaceStateProvider>
+          {route === "debate" ? (
+            <SessionShell
+              uiLanguage="zh-CN"
+              createSession={createSession}
+              continueSession={vi.fn()}
+            />
+          ) : (
+            <button type="button" onClick={() => setRoute("debate")}>
+              回到辩论
+            </button>
+          )}
+          <button type="button" onClick={() => setRoute("other")}>
+            离开辩论
+          </button>
+        </DebateWorkspaceStateProvider>
+      );
+    }
+
+    render(<Harness />);
+
+    await user.click(screen.getByRole("button", { name: /共证衡辩/ }));
+    await user.click(screen.getByRole("button", { name: "离开辩论" }));
+    await user.click(screen.getByRole("button", { name: "回到辩论" }));
+
+    expect(screen.getByRole("button", { name: /隔证三辩/ })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("决策问题"), "我应该为了工作搬到另一个城市吗？");
+    await user.click(screen.getByRole("button", { name: "开始辩论" }));
+
+    expect(createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debateMode: "private-evidence"
       })
     );
   });

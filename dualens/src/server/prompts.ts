@@ -1,4 +1,10 @@
-import type { DebateTurn, Evidence, SessionRecord } from "@/lib/types";
+import type {
+  DebateTurn,
+  DebateTurnAnalysis,
+  Evidence,
+  SessionRecord,
+  SpeakerSideKey
+} from "@/lib/types";
 import {
   getLocalizedTemperamentOptionLabel,
   getLocalizedTemperamentPairLabel,
@@ -63,13 +69,30 @@ function formatTurnContext(turns: DebateTurn[], evidence: Evidence[], language: 
           : "";
       const speaker = typeof turn.speaker === "string" ? turn.speaker : "Unknown speaker";
       const content = typeof turn.content === "string" ? turn.content : "";
+      const analysis = turn.analysis
+        ? ` | analysis factual=${turn.analysis.factualIssues.join("; ")} | logical=${turn.analysis.logicalIssues.join("; ")} | value=${turn.analysis.valueIssues.join("; ")} | searchFocus=${turn.analysis.searchFocus}`
+        : "";
 
-      return `- turn ${index + 1} [${turn.id}] ${speaker}: ${content}${citedEvidence}`;
+      return `- turn ${index + 1} [${turn.id}] ${speaker}: ${content}${citedEvidence}${analysis}`;
     })
   ];
 }
 
-export function buildOpeningPrompt(session: SessionRecord) {
+function formatAnalysisContext(analysis?: DebateTurnAnalysis) {
+  if (!analysis) {
+    return [];
+  }
+
+  return [
+    "Pre-speech analysis:",
+    `- factualIssues=${analysis.factualIssues.join(" | ")}`,
+    `- logicalIssues=${analysis.logicalIssues.join(" | ")}`,
+    `- valueIssues=${analysis.valueIssues.join(" | ")}`,
+    `- searchFocus=${analysis.searchFocus}`
+  ];
+}
+
+export function buildOpeningPrompt(session: SessionRecord, analysis?: DebateTurnAnalysis) {
   const language = session.language ?? "en";
   const pair = getTemperamentPairById(session.presetSelection.pairId);
   const lumina = getLocalizedSideIdentityCopy("lumina", language);
@@ -95,6 +118,7 @@ export function buildOpeningPrompt(session: SessionRecord) {
     `Evidence count: ${session.evidence.length}`,
     ...formatEvidenceContext(session.evidence, language),
     ...formatTurnContext(session.turns, session.evidence, language),
+    ...formatAnalysisContext(analysis),
     hasPriorTurns
       ? "Respond directly to the latest turn while advancing your side of the debate."
       : "Write the opening position in the selected language.",
@@ -125,5 +149,30 @@ export function buildSummaryPrompt(session: SessionRecord) {
     "Return only valid JSON.",
     'Use this JSON object shape exactly: {"strongestFor":[{"text":"<point>","evidenceIds":["e1"]}],"strongestAgainst":[{"text":"<point>","evidenceIds":["e2"]}],"coreDisagreement":"<main disagreement>","keyUncertainty":"<main uncertainty>","nextAction":"<recommended next action>"}.',
     "Use empty arrays when a side has no supported points."
+  ].join("\n");
+}
+
+export function buildTurnAnalysisPrompt(
+  session: SessionRecord,
+  analyzingSide: SpeakerSideKey,
+  visibleEvidence: Evidence[]
+) {
+  const language = session.language ?? "en";
+  const previousTurn = session.turns.at(-1);
+
+  return [
+    `Language: ${language}`,
+    `Question: ${session.question}`,
+    `Analyzing side: ${analyzingSide}`,
+    previousTurn
+      ? `Opponent previous turn: ${previousTurn.speaker}: ${previousTurn.content}`
+      : "Opponent previous turn: none",
+    ...formatEvidenceContext(visibleEvidence, language),
+    ...formatTurnContext(session.turns, visibleEvidence, language),
+    "Check the opponent's previous turn before speaking.",
+    "Identify factual problems, logical problems, and value problems.",
+    "Return only valid JSON.",
+    'Use this JSON object shape exactly: {"factualIssues":["<issue>"],"logicalIssues":["<issue>"],"valueIssues":["<issue>"],"searchFocus":"<query focus>"}.',
+    "Use empty arrays when no issue is found."
   ].join("\n");
 }

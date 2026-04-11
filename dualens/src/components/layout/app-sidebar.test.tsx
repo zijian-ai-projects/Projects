@@ -83,8 +83,7 @@ describe("workspace navigation copy", () => {
     const brandLink = taijiMark?.closest("a");
 
     expect(taijiMark).toHaveClass("animate-taiji-counterclockwise");
-    expect(brandLink).not.toHaveClass("border");
-    expect(brandLink).not.toHaveClass("bg-white");
+    expect(brandLink).toHaveAttribute("href", "/product");
     expect(brandLink?.firstElementChild).toHaveClass("justify-center");
   });
 });

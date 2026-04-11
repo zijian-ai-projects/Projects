@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useState } from "react";
+import Link from "next/link";
 import { SectionCard } from "@/components/common/section-card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -8,18 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import type { SessionInput } from "@/components/session-shell";
 import { loadActiveModelProviderDisplay } from "@/lib/model-provider-preferences";
 import * as presetLibrary from "@/lib/presets";
-import { loadSelectedSearchEngineLabel } from "@/lib/search-engine-preferences";
+import { loadActiveSearchEngineDisplay } from "@/lib/search-engine-preferences";
 import { getLocalizedSideIdentityCopy } from "@/lib/side-identities";
 import { getUiCopy } from "@/lib/ui-copy";
 import type {
-  BuiltInModel,
   SpeakerSideKey,
   TemperamentOption,
   TemperamentPairId,
   UiLanguage
 } from "@/lib/types";
-
-const DEFAULT_MODEL: BuiltInModel = "deepseek-chat";
 
 function readTrimmedField(formData: FormData, name: string) {
   const value = formData.get(name);
@@ -28,12 +26,16 @@ function readTrimmedField(formData: FormData, name: string) {
 
 function QuestionFormImpl({
   onSubmit,
-  uiLanguage: controlledUiLanguage
+  uiLanguage: controlledUiLanguage,
+  questionValue,
+  onQuestionChange
 }: {
   onSubmit(input: SessionInput): Promise<void>;
   uiLanguage?: UiLanguage;
+  questionValue?: string;
+  onQuestionChange?: (question: string) => void;
 }) {
-  const [question, setQuestion] = useState("");
+  const [localQuestion, setLocalQuestion] = useState("");
   const [temperamentPairId, setTemperamentPairId] = useState<TemperamentPairId>(
     presetLibrary.TEMPERAMENT_PAIRS[0]?.id ?? "cautious-aggressive"
   );
@@ -42,7 +44,9 @@ function QuestionFormImpl({
   );
   const [firstSpeaker, setFirstSpeaker] = useState<SpeakerSideKey>("lumina");
   const [selectedModelLabel, setSelectedModelLabel] = useState<string | null>(null);
+  const [isSelectedModelConfigured, setIsSelectedModelConfigured] = useState(false);
   const [selectedSearchEngineLabel, setSelectedSearchEngineLabel] = useState<string | null>(null);
+  const [isSelectedSearchEngineConfigured, setIsSelectedSearchEngineConfigured] = useState(false);
   const [isSwapActive, setIsSwapActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [questionError, setQuestionError] = useState(false);
@@ -63,6 +67,8 @@ function QuestionFormImpl({
   const vigilaIdentity = getLocalizedSideIdentityCopy("vigila", uiLanguage);
   const tooShortQuestionMessage =
     uiLanguage === "en" ? "Question must be at least 10 characters." : "问题至少需要 10 个字符。";
+  const question = questionValue ?? localQuestion;
+  const setQuestion = onQuestionChange ?? setLocalQuestion;
   const sectionCopy =
     uiLanguage === "en"
       ? {
@@ -75,7 +81,7 @@ function QuestionFormImpl({
           pairLabel: "Temperament pair",
           currentModelLabel: "Current model",
           currentSearchEngineLabel: "Current search engine",
-          searchEngineLoadingLabel: "Syncing",
+          unconfiguredLabel: "Not configured",
           styleLabel: "Style"
         }
       : {
@@ -88,13 +94,18 @@ function QuestionFormImpl({
           pairLabel: "风格配对",
           currentModelLabel: "当前模型",
           currentSearchEngineLabel: "当前搜索引擎",
-          searchEngineLoadingLabel: "同步中",
+          unconfiguredLabel: "未配置",
           styleLabel: "风格"
         };
 
   useEffect(() => {
-    setSelectedModelLabel(loadActiveModelProviderDisplay().modelLabel);
-    setSelectedSearchEngineLabel(loadSelectedSearchEngineLabel());
+    const modelDisplay = loadActiveModelProviderDisplay();
+    const searchEngineDisplay = loadActiveSearchEngineDisplay();
+
+    setSelectedModelLabel(modelDisplay.modelLabel);
+    setIsSelectedModelConfigured(modelDisplay.configured);
+    setSelectedSearchEngineLabel(searchEngineDisplay.engineName);
+    setIsSelectedSearchEngineConfigured(searchEngineDisplay.configured);
   }, []);
 
   const handleSwapTemperament = () => {
@@ -118,28 +129,42 @@ function QuestionFormImpl({
   const toggleSpeakingOrder = () => {
     setFirstSpeaker((current) => (current === "lumina" ? "vigila" : "lumina"));
   };
+  const modelSummary = isSelectedModelConfigured && selectedModelLabel
+    ? selectedModelLabel
+    : sectionCopy.unconfiguredLabel;
+  const searchEngineSummary = isSelectedSearchEngineConfigured && selectedSearchEngineLabel
+    ? selectedSearchEngineLabel
+    : sectionCopy.unconfiguredLabel;
   const runtimeControls = (
     <div
       data-testid="debate-action-row"
       className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end"
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
-        <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
+        <Link
+          href="/providers"
+          aria-label={`${sectionCopy.currentModelLabel}: ${modelSummary}`}
+          className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5 transition hover:border-black/16 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+        >
           <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
             {sectionCopy.currentModelLabel}
           </p>
           <p className="mt-1 text-sm font-medium text-app-strong">
-            {selectedModelLabel ?? DEFAULT_MODEL}
+            {modelSummary}
           </p>
-        </div>
-        <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
+        </Link>
+        <Link
+          href="/search-engines"
+          aria-label={`${sectionCopy.currentSearchEngineLabel}: ${searchEngineSummary}`}
+          className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5 transition hover:border-black/16 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+        >
           <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
             {sectionCopy.currentSearchEngineLabel}
           </p>
           <p className="mt-1 text-sm font-medium text-app-strong">
-            {selectedSearchEngineLabel ?? sectionCopy.searchEngineLoadingLabel}
+            {searchEngineSummary}
           </p>
-        </div>
+        </Link>
       </div>
       <div className="flex justify-start lg:shrink-0 lg:justify-end">
         <Button type="submit" disabled={isSubmitting}>

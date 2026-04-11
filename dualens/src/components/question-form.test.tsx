@@ -4,11 +4,17 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { loadSelectedSearchEngineLabel } = vi.hoisted(() => ({
+const { loadActiveSearchEngineDisplay, loadSelectedSearchEngineLabel } = vi.hoisted(() => ({
+  loadActiveSearchEngineDisplay: vi.fn(() => ({
+    engineId: "tavily",
+    engineName: "Tavily",
+    configured: false
+  })),
   loadSelectedSearchEngineLabel: vi.fn(() => "Tavily")
 }));
 
 vi.mock("@/lib/search-engine-preferences", () => ({
+  loadActiveSearchEngineDisplay,
   loadSelectedSearchEngineLabel
 }));
 
@@ -27,6 +33,11 @@ function getCardBySideName(sideName: string) {
 
 describe("QuestionForm", () => {
   beforeEach(() => {
+    loadActiveSearchEngineDisplay.mockReturnValue({
+      engineId: "tavily",
+      engineName: "Tavily",
+      configured: false
+    });
     loadSelectedSearchEngineLabel.mockReturnValue("Tavily");
   });
 
@@ -34,14 +45,15 @@ describe("QuestionForm", () => {
     window.localStorage.clear();
   });
 
-  it("removes the standalone model section and shows model plus search-engine summary", () => {
+  it("removes the standalone model section and links unconfigured model plus search-engine summaries", () => {
     render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
 
     expect(screen.queryByText("模型与参数区")).not.toBeInTheDocument();
     expect(screen.getByText("当前模型")).toBeInTheDocument();
-    expect(screen.getByText("deepseek-chat")).toBeInTheDocument();
+    expect(screen.getAllByText("未配置")).toHaveLength(2);
     expect(screen.getByText("当前搜索引擎")).toBeInTheDocument();
-    expect(screen.getByText("Tavily")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /当前模型/ })).toHaveAttribute("href", "/providers");
+    expect(screen.getByRole("link", { name: /当前搜索引擎/ })).toHaveAttribute("href", "/search-engines");
     expect(screen.queryByText("本次辩论将使用当前默认模型与搜索引擎。")).not.toBeInTheDocument();
   });
 
@@ -63,6 +75,18 @@ describe("QuestionForm", () => {
     render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
 
     expect(await screen.findByText("gpt-4.1")).toBeInTheDocument();
+  });
+
+  it("shows the selected configured search engine in the action summary", async () => {
+    loadActiveSearchEngineDisplay.mockReturnValue({
+      engineId: "google",
+      engineName: "Google",
+      configured: true
+    });
+
+    render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
+
+    expect(await screen.findByText("Google")).toBeInTheDocument();
   });
 
   it("renders compact style labels instead of prefixed style summaries", () => {
@@ -129,11 +153,15 @@ describe("QuestionForm", () => {
   });
 
   it("does not server-render a hard-coded search-engine fallback", () => {
-    loadSelectedSearchEngineLabel.mockReturnValue("Google");
+    loadActiveSearchEngineDisplay.mockReturnValue({
+      engineId: "google",
+      engineName: "Google",
+      configured: true
+    });
 
     const html = renderToString(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
 
     expect(html).not.toContain("Tavily");
-    expect(html).toContain("同步中");
+    expect(html).toContain("未配置");
   });
 });

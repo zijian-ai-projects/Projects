@@ -65,7 +65,7 @@ describe("ProvidersPage", () => {
     expect(fireEvent.keyDown(doubaoCard, { key: "End" })).toBe(false);
   });
 
-  it("saves provider configuration and restores it after remount", async () => {
+  it("auto-saves provider configuration and restores it after remount", async () => {
     const user = userEvent.setup();
     const view = renderProvidersPage();
 
@@ -74,11 +74,24 @@ describe("ProvidersPage", () => {
     await user.type(screen.getByLabelText("模型 ID"), "gpt-4.1");
     await user.clear(screen.getByLabelText("API Endpoint"));
     await user.type(screen.getByLabelText("API Endpoint"), "https://api.openai.com/v1");
-    await user.click(screen.getByRole("button", { name: "保存配置" }));
 
-    expect(within(screen.getByRole("radio", { name: "OpenAI" })).getByText("已配置")).toHaveClass(
-      "text-black"
-    );
+    expect(screen.queryByRole("button", { name: "重置" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "保存配置" })).not.toBeInTheDocument();
+
+    const storedConfigs = JSON.parse(
+      window.localStorage.getItem("dualens:modelProviderConfigs") ?? "{}"
+    ) as Record<string, { apiKey?: string; modelId?: string; endpoint?: string }>;
+    expect(storedConfigs.openai).toMatchObject({
+      apiKey: "client-openai-key",
+      modelId: "gpt-4.1",
+      endpoint: "https://api.openai.com/v1"
+    });
+
+    const configuredStatus = within(screen.getByRole("radio", { name: "OpenAI" })).getByText("已配置");
+    expect(configuredStatus).toHaveClass("inline-flex");
+    expect(configuredStatus).toHaveClass("rounded-full");
+    expect(configuredStatus).toHaveClass("bg-black");
+    expect(configuredStatus).toHaveClass("text-white");
 
     view.unmount();
     renderProvidersPage();
@@ -88,9 +101,7 @@ describe("ProvidersPage", () => {
     expect(screen.getByLabelText("API Key")).toHaveValue("client-openai-key");
     expect(screen.getByLabelText("模型 ID")).toHaveValue("gpt-4.1");
     expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://api.openai.com/v1");
-    expect(within(screen.getByRole("radio", { name: "OpenAI" })).getByText("已配置")).toHaveClass(
-      "text-black"
-    );
+    expect(within(screen.getByRole("radio", { name: "OpenAI" })).getByText("已配置")).toHaveClass("bg-black");
   });
 
   it("uses the stored English global language for page chrome", async () => {

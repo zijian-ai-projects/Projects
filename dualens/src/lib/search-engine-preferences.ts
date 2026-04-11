@@ -192,3 +192,15 @@ export function loadSelectedSearchEngineLabel() {
 
   return searchEngineItems.find((item) => item.id === selectedId)?.name ?? "Tavily";
 }
+
+export function loadActiveSearchEngineDisplay() {
+  const selectedId = loadSelectedSearchEngineId();
+  const config = loadSearchEngineConfigs()[selectedId];
+  const item = getSearchEngineItem(selectedId);
+
+  return {
+    engineId: selectedId,
+    engineName: item.name,
+    configured: isSearchEngineConfigured(config)
+  };
+}

@@ -75,16 +75,28 @@ describe("SearchEnginesPage", () => {
     expect(window.localStorage.getItem("dualens:selectedSearchEngineId")).toBe("bing");
   });
 
-  it("saves search engine configuration and restores it after remount", async () => {
+  it("auto-saves search engine configuration and restores it after remount", async () => {
     const user = userEvent.setup();
     const view = renderSearchEnginesPage();
 
     await user.type(screen.getByLabelText("API Key"), "client-tavily-key");
-    await user.click(screen.getByRole("button", { name: "保存配置" }));
 
-    expect(within(screen.getByRole("radio", { name: "Tavily" })).getByText("已配置")).toHaveClass(
-      "text-black"
-    );
+    expect(screen.queryByRole("button", { name: "重置" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "保存配置" })).not.toBeInTheDocument();
+
+    const storedConfigs = JSON.parse(
+      window.localStorage.getItem("dualens:searchEngineConfigs") ?? "{}"
+    ) as Record<string, { apiKey?: string; endpoint?: string }>;
+    expect(storedConfigs.tavily).toMatchObject({
+      apiKey: "client-tavily-key",
+      endpoint: "https://api.tavily.com/search"
+    });
+
+    const configuredStatus = within(screen.getByRole("radio", { name: "Tavily" })).getByText("已配置");
+    expect(configuredStatus).toHaveClass("inline-flex");
+    expect(configuredStatus).toHaveClass("rounded-full");
+    expect(configuredStatus).toHaveClass("bg-black");
+    expect(configuredStatus).toHaveClass("text-white");
 
     view.unmount();
     renderSearchEnginesPage();
@@ -95,9 +107,7 @@ describe("SearchEnginesPage", () => {
     );
     expect(screen.getByLabelText("API Key")).toHaveValue("client-tavily-key");
     expect(screen.getByLabelText("API Endpoint")).toHaveValue("https://api.tavily.com/search");
-    expect(within(screen.getByRole("radio", { name: "Tavily" })).getByText("已配置")).toHaveClass(
-      "text-black"
-    );
+    expect(within(screen.getByRole("radio", { name: "Tavily" })).getByText("已配置")).toHaveClass("bg-black");
   });
 
   it("hydrates without mismatch when a saved engine exists", async () => {

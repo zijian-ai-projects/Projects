@@ -5,7 +5,6 @@ import { SectionCard } from "@/components/common/section-card";
 import { PageHeader } from "@/components/common/page-header";
 import { SelectionCardItem } from "@/components/common/selection-card-item";
 import { StatusTag } from "@/components/common/status-tag";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppPreferences } from "@/lib/app-preferences";
 import { searchEngineItems, type SearchEngineId } from "@/lib/search-engine-options";
@@ -14,7 +13,6 @@ import {
   isSearchEngineConfigured,
   loadSearchEngineConfigs,
   loadSelectedSearchEngineId,
-  resetSearchEngineConfig,
   saveSearchEngineConfig,
   saveSelectedSearchEngineId
 } from "@/lib/search-engine-preferences";
@@ -54,17 +52,20 @@ export default function SearchEnginesPage() {
   }, [hasLoadedPreference, selectedEngineId]);
 
   const updateSelectedConfig = (patch: Partial<SearchEngineConfig>) => {
-    setConfigs((current) => ({
-      ...current,
-      [selectedEngineId]: {
+    setConfigs((current) => {
+      const nextConfig = {
         ...current[selectedEngineId],
         ...patch
-      }
-    }));
-  };
+      };
 
-  const refreshConfigs = () => {
-    setConfigs(loadSearchEngineConfigs());
+      saveSelectedSearchEngineId(selectedEngineId);
+      saveSearchEngineConfig(selectedEngineId, nextConfig);
+
+      return {
+        ...current,
+        [selectedEngineId]: nextConfig
+      };
+    });
   };
 
   return (
@@ -145,28 +146,6 @@ export default function SearchEnginesPage() {
                 placeholder={searchCopy.extraPlaceholder}
               />
             </label>
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  resetSearchEngineConfig(selectedEngineId);
-                  refreshConfigs();
-                }}
-              >
-                {searchCopy.reset}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  saveSelectedSearchEngineId(selectedEngineId);
-                  saveSearchEngineConfig(selectedEngineId, selectedConfig);
-                  refreshConfigs();
-                }}
-              >
-                {searchCopy.save}
-              </Button>
-            </div>
           </div>
         </SectionCard>
       </div>

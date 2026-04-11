@@ -6,14 +6,12 @@ import { SectionCard } from "@/components/common/section-card";
 import { SelectionCardItem } from "@/components/common/selection-card-item";
 import { StatusTag } from "@/components/common/status-tag";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { useAppPreferences } from "@/lib/app-preferences";
 import {
   isModelProviderConfigured,
   loadModelProviderConfigs,
   loadSelectedModelProviderId,
   MODEL_PROVIDER_OPTIONS,
-  resetModelProviderConfig,
   saveModelProviderConfig,
   saveSelectedModelProviderId,
   type ModelProviderConfig,
@@ -64,17 +62,20 @@ export default function ProvidersPage() {
   });
 
   const updateSelectedConfig = (patch: Partial<ModelProviderConfig>) => {
-    setConfigs((current) => ({
-      ...current,
-      [selectedProviderId]: {
+    setConfigs((current) => {
+      const nextConfig = {
         ...current[selectedProviderId],
         ...patch
-      }
-    }));
-  };
+      };
 
-  const refreshConfigs = () => {
-    setConfigs(loadModelProviderConfigs());
+      saveSelectedModelProviderId(selectedProviderId);
+      saveModelProviderConfig(selectedProviderId, nextConfig);
+
+      return {
+        ...current,
+        [selectedProviderId]: nextConfig
+      };
+    });
   };
 
   return (
@@ -158,28 +159,6 @@ export default function ProvidersPage() {
             </label>
             <div className="rounded-[22px] border border-black/8 bg-black/[0.02] px-4 py-4 text-sm leading-6 text-app-muted">
               {providerCopy.keyHelpPrefix} {selectedProvider.name} {providerCopy.keyHelpSuffix}
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  resetModelProviderConfig(selectedProviderId);
-                  refreshConfigs();
-                }}
-              >
-                {providerCopy.reset}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  saveSelectedModelProviderId(selectedProviderId);
-                  saveModelProviderConfig(selectedProviderId, selectedConfig);
-                  refreshConfigs();
-                }}
-              >
-                {providerCopy.save}
-              </Button>
             </div>
           </div>
         </SectionCard>

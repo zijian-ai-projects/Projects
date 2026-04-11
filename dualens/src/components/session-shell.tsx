@@ -10,6 +10,7 @@ import { getLocalizedSideIdentityCopy } from "@/lib/side-identities";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/common/section-card";
 import { getUiCopy } from "@/lib/ui-copy";
+import { useOptionalDebateQuestionDraft } from "@/lib/debate-question-draft";
 import {
   persistSessionHistory,
   type HistoryRecordMeta
@@ -344,8 +345,14 @@ export function SessionShell({
   const [errorKind, setErrorKind] = useState<SessionErrorKind | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [isStopping, setIsStopping] = useState(false);
+  const [localQuestionDraft, setLocalQuestionDraft] = useState("");
+  const workspaceQuestionDraft = useOptionalDebateQuestionDraft();
   const persistQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const uiCopy = getUiCopy(uiLanguage);
+  const questionDraft = workspaceQuestionDraft ?? {
+    question: localQuestionDraft,
+    setQuestion: setLocalQuestionDraft
+  };
   const errorMessage = errorKind
     ? [uiCopy.sessionErrors[errorKind], errorDetail].filter(Boolean).join(" ")
     : null;
@@ -450,7 +457,12 @@ export function SessionShell({
 
   return (
     <div className="space-y-8">
-      <QuestionForm uiLanguage={uiLanguage} onSubmit={handleSubmit} />
+      <QuestionForm
+        uiLanguage={uiLanguage}
+        onSubmit={handleSubmit}
+        questionValue={questionDraft.question}
+        onQuestionChange={questionDraft.setQuestion}
+      />
       {errorMessage ? (
         <p className="session-alert" role="alert">
           {errorMessage}

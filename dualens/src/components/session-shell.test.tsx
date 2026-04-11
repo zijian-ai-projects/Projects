@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 
 const { persistSessionHistory } = vi.hoisted(() => ({
   persistSessionHistory: vi.fn(async () => ({ status: "written" as const }))
@@ -13,6 +14,7 @@ vi.mock("@/lib/history-file-writer", () => ({
 }));
 
 import { SessionShell, type SessionView } from "@/components/session-shell";
+import { DebateQuestionDraftProvider } from "@/lib/debate-question-draft";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -496,5 +498,38 @@ describe("SessionShell", () => {
     await waitFor(() => {
       expect(persistSessionHistory).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("preserves the question draft when the debate page unmounts inside the workspace", async () => {
+    const user = setupUser();
+
+    function WorkspaceHarness() {
+      const [showDebate, setShowDebate] = useState(true);
+
+      return (
+        <DebateQuestionDraftProvider>
+          {showDebate ? (
+            <>
+              <button type="button" onClick={() => setShowDebate(false)}>
+                Open settings
+              </button>
+              <SessionShell uiLanguage="en" createSession={vi.fn()} continueSession={vi.fn()} />
+            </>
+          ) : (
+            <button type="button" onClick={() => setShowDebate(true)}>
+              Back to debate
+            </button>
+          )}
+        </DebateQuestionDraftProvider>
+      );
+    }
+
+    render(<WorkspaceHarness />);
+
+    await user.type(screen.getByLabelText("Decision question"), "Should I move to Hangzhou?");
+    await user.click(screen.getByRole("button", { name: "Open settings" }));
+    await user.click(screen.getByRole("button", { name: "Back to debate" }));
+
+    expect(screen.getByLabelText("Decision question")).toHaveValue("Should I move to Hangzhou?");
   });
 });

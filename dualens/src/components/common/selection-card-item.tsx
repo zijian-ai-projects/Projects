@@ -62,10 +62,10 @@ export function SelectionCardItem({
           <span id={nameId} className="block text-sm font-medium text-black">{name}</span>
           <span
             className={[
-              "mt-1 block text-xs",
+              "mt-1 inline-flex w-fit rounded-full px-2 py-0.5 text-xs",
               configured
-                ? "font-medium text-black"
-                : "text-black/36 shadow-[0_1px_8px_rgba(0,0,0,0.08)]"
+                ? "bg-black font-medium text-white"
+                : "bg-black/[0.04] text-black/48"
             ].join(" ")}
           >
             {statusLabel}

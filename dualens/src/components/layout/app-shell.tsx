@@ -5,12 +5,15 @@ import { useState } from "react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppPreferencesProvider } from "@/lib/app-preferences";
 import { useAppPreferences } from "@/lib/app-preferences";
+import { DebateQuestionDraftProvider } from "@/lib/debate-question-draft";
 import { getWorkspaceCopy } from "@/lib/workspace-copy";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <AppPreferencesProvider>
-      <WorkspaceFrame>{children}</WorkspaceFrame>
+      <DebateQuestionDraftProvider>
+        <WorkspaceFrame>{children}</WorkspaceFrame>
+      </DebateQuestionDraftProvider>
     </AppPreferencesProvider>
   );
 }

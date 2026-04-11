@@ -2,6 +2,11 @@ import "@testing-library/jest-dom/vitest";
 
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/search-engine-preferences", () => ({
+  loadSelectedSearchEngineLabel: () => "Tavily"
+}));
+
 import { QuestionForm } from "@/components/question-form";
 
 function getCardBySideName(sideName: string) {
@@ -16,14 +21,27 @@ function getCardBySideName(sideName: string) {
 }
 
 describe("QuestionForm", () => {
-  it("keeps the Lumina order chip idle state black with white text", () => {
-    render(<QuestionForm onSubmit={vi.fn()} uiLanguage="en" />);
+  it("removes the standalone model section and shows model plus search-engine summary", () => {
+    render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
 
-    const luminaCard = getCardBySideName("Lumina");
-    const luminaOrderChip = within(luminaCard).getByRole("button", { name: "First" });
+    expect(screen.queryByText("模型与参数区")).not.toBeInTheDocument();
+    expect(screen.getByText("当前模型")).toBeInTheDocument();
+    expect(screen.getByText("deepseek-chat")).toBeInTheDocument();
+    expect(screen.getByText("当前搜索引擎")).toBeInTheDocument();
+    expect(screen.getByText("Tavily")).toBeInTheDocument();
+  });
 
-    expect(luminaOrderChip).toHaveClass("bg-black");
-    expect(luminaOrderChip).toHaveClass("text-white");
+  it("renders compact style summaries instead of the speaking-order block", () => {
+    render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
+
+    expect(screen.getByText("风格：谨慎")).toBeInTheDocument();
+    expect(screen.getByText("风格：激进")).toBeInTheDocument();
+    expect(screen.queryByText("发言顺序")).not.toBeInTheDocument();
+
+    const luminaCard = getCardBySideName("乾明");
+    const luminaOrderChip = within(luminaCard).getByRole("button", { name: "先" });
+
+    expect(luminaOrderChip).toHaveClass("rounded-full");
   });
 
   it("keeps the center swap button idle state white with black text", () => {

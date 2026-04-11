@@ -11,8 +11,10 @@ describe("DebatePage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "辩论" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "问题输入区" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "双角色配置区" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "模型与参数区" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: "模型与参数区" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "操作区" })).toBeInTheDocument();
+    expect(screen.getByText("当前模型")).toBeInTheDocument();
+    expect(screen.getByText("当前搜索引擎")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "开始辩论" })).toBeInTheDocument();
   });
 });

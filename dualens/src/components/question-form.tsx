@@ -1,12 +1,13 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { SectionCard } from "@/components/common/section-card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { SessionInput } from "@/components/session-shell";
 import * as presetLibrary from "@/lib/presets";
+import { loadSelectedSearchEngineLabel } from "@/lib/search-engine-preferences";
 import { getLocalizedSideIdentityCopy } from "@/lib/side-identities";
 import { getUiCopy } from "@/lib/ui-copy";
 import type {
@@ -17,7 +18,7 @@ import type {
   UiLanguage
 } from "@/lib/types";
 
-const BUILT_IN_MODELS: readonly BuiltInModel[] = ["deepseek-chat", "deepseek-reasoner"];
+const DEFAULT_MODEL: BuiltInModel = "deepseek-chat";
 
 function readTrimmedField(formData: FormData, name: string) {
   const value = formData.get(name);
@@ -39,7 +40,7 @@ function QuestionFormImpl({
     presetLibrary.TEMPERAMENT_PAIRS[0]?.options[0] ?? "cautious"
   );
   const [firstSpeaker, setFirstSpeaker] = useState<SpeakerSideKey>("lumina");
-  const [model, setModel] = useState<BuiltInModel>(BUILT_IN_MODELS[0]);
+  const [selectedSearchEngineLabel, setSelectedSearchEngineLabel] = useState("Tavily");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [questionError, setQuestionError] = useState(false);
   const uiLanguage = controlledUiLanguage ?? "zh-CN";
@@ -65,36 +66,31 @@ function QuestionFormImpl({
           questionTitle: "Question",
           questionDescription: "Describe the decision you want both agents to evaluate.",
           rolesTitle: "Role configuration",
-          rolesDescription: "Assign the stance framing, temperament pair, and speaking order for each side.",
-          modelTitle: "Model and parameters",
-          modelDescription: "Choose the model and confirm the current debate structure before launch.",
+          rolesDescription: "Confirm both stances and temperament before launching the debate.",
           actionTitle: "Action",
-          actionDescription: "Review the current setup and launch the session when ready.",
+          actionDescription: "Confirm the runtime context and launch the session when ready.",
           pairLabel: "Temperament pair",
-          debateLanguageLabel: "Session language",
-          debateLanguageValue: uiLanguage === "en" ? "English" : "中文",
-          structureLabel: "Debate structure",
-          structureValue: "Research → Debate → Summary",
-          assignmentLabel: "Current assignment",
-          orderLabel: "Speaking order"
+          currentModelLabel: "Current model",
+          currentSearchEngineLabel: "Current search engine",
+          styleLabel: "Style"
         }
       : {
           questionTitle: "问题输入区",
           questionDescription: "用一句清晰的问题定义本次需要判断的决策主题。",
           rolesTitle: "双角色配置区",
-          rolesDescription: "为双方设定立场、风格配对与发言顺序，强化双 AI 对辩感。",
-          modelTitle: "模型与参数区",
-          modelDescription: "选择当前辩论所用模型，并确认本次流程结构。",
+          rolesDescription: "确认双方立场与风格配对，保持双 AI 对辩结构清晰克制。",
           actionTitle: "操作区",
-          actionDescription: "最后检查当前设置，再正式启动辩论。",
+          actionDescription: "确认当前模型与搜索引擎后，正式启动辩论。",
           pairLabel: "风格配对",
-          debateLanguageLabel: "会话语言",
-          debateLanguageValue: "中文",
-          structureLabel: "辩论结构",
-          structureValue: "研究 → 辩论 → 总结",
-          assignmentLabel: "当前分配",
-          orderLabel: "发言顺序"
+          currentModelLabel: "当前模型",
+          currentSearchEngineLabel: "当前搜索引擎",
+          styleLabel: "风格"
         };
+
+  useEffect(() => {
+    setSelectedSearchEngineLabel(loadSelectedSearchEngineLabel());
+  }, []);
+
   const handleSwapTemperament = () => {
     setLuminaTemperament(presetLibrary.getOppositeTemperament(selectedPair, luminaTemperament));
   };
@@ -139,7 +135,7 @@ function QuestionFormImpl({
             } as SessionInput["presetSelection"],
             firstSpeaker,
             language: uiLanguage,
-            model
+            model: DEFAULT_MODEL
           };
 
           await onSubmit(input);
@@ -197,34 +193,25 @@ function QuestionFormImpl({
           </div>
         }
       >
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] xl:items-center">
-          <section className="rounded-[24px] border border-black/8 bg-white px-5 py-5 shadow-[0_10px_24px_rgba(0,0,0,0.03)]">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-base font-semibold text-app-strong">{luminaIdentity.name}</div>
-                  <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-app-muted">
-                    {luminaIdentity.descriptor}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="rounded-full border border-black bg-black px-3 py-1 text-xs font-semibold text-white transition hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
-                  onClick={toggleSpeakingOrder}
-                >
-                  {getOrderLabel("lumina")}
-                </button>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[18px] border border-black/8 bg-black/[0.02] px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">{sectionCopy.assignmentLabel}</p>
-                  <p className="mt-2 text-sm font-medium text-app-strong">{selectedLuminaLabel}</p>
-                </div>
-                <div className="rounded-[18px] border border-black/8 bg-black/[0.02] px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">{sectionCopy.orderLabel}</p>
-                  <p className="mt-2 text-sm font-medium text-app-strong">{getOrderLabel("lumina")}</p>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] xl:items-center">
+          <section className="rounded-[22px] border border-black/8 bg-white px-5 py-4 shadow-[0_8px_20px_rgba(0,0,0,0.025)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-base font-semibold text-app-strong">{luminaIdentity.name}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-app-muted">
+                  {luminaIdentity.descriptor}
                 </div>
               </div>
+              <button
+                type="button"
+                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-app-muted transition hover:border-black/18 hover:text-app-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+                onClick={toggleSpeakingOrder}
+              >
+                {getOrderLabel("lumina")}
+              </button>
+            </div>
+            <div className="mt-4 rounded-[16px] border border-black/8 bg-black/[0.02] px-4 py-2.5 text-sm font-medium text-app-strong">
+              {sectionCopy.styleLabel}：{selectedLuminaLabel}
             </div>
           </section>
 
@@ -233,7 +220,7 @@ function QuestionFormImpl({
               type="button"
               variant="ghost"
               aria-label={uiCopy.swapTemperamentAssignment}
-              className="h-[58px] w-[58px] shrink-0 rounded-full border border-black/12 bg-white p-0 text-black hover:bg-white/90 hover:text-black"
+              className="h-[52px] w-[52px] shrink-0 rounded-full border border-black/12 bg-white p-0 text-black hover:bg-white/90 hover:text-black"
               onClick={handleSwapTemperament}
             >
               <span
@@ -245,75 +232,57 @@ function QuestionFormImpl({
             </Button>
           </div>
 
-          <section className="rounded-[24px] border border-black bg-black px-5 py-5 shadow-[0_10px_24px_rgba(0,0,0,0.08)]">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-base font-semibold text-white">{vigilaIdentity.name}</div>
-                  <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/60">
-                    {vigilaIdentity.descriptor}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="rounded-full border border-white/16 bg-white px-3 py-1 text-xs font-semibold text-black transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-                  onClick={toggleSpeakingOrder}
-                >
-                  {getOrderLabel("vigila")}
-                </button>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[18px] border border-white/10 bg-white/[0.08] px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/55">{sectionCopy.assignmentLabel}</p>
-                  <p className="mt-2 text-sm font-medium text-white">{selectedVigilaLabel}</p>
-                </div>
-                <div className="rounded-[18px] border border-white/10 bg-white/[0.08] px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/55">{sectionCopy.orderLabel}</p>
-                  <p className="mt-2 text-sm font-medium text-white">{getOrderLabel("vigila")}</p>
+          <section className="rounded-[22px] border border-black bg-black px-5 py-4 shadow-[0_8px_22px_rgba(0,0,0,0.07)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-base font-semibold text-white">{vigilaIdentity.name}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/60">
+                  {vigilaIdentity.descriptor}
                 </div>
               </div>
+              <button
+                type="button"
+                className="rounded-full border border-white/16 bg-black px-3 py-1 text-xs font-medium text-white/66 transition hover:bg-white/8 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                onClick={toggleSpeakingOrder}
+              >
+                {getOrderLabel("vigila")}
+              </button>
+            </div>
+            <div className="mt-4 rounded-[16px] border border-white/10 bg-white/[0.08] px-4 py-2.5 text-sm font-medium text-white">
+              {sectionCopy.styleLabel}：{selectedVigilaLabel}
             </div>
           </section>
         </div>
       </SectionCard>
 
-      <SectionCard title={sectionCopy.modelTitle} description={sectionCopy.modelDescription}>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <label className="space-y-2 text-sm font-medium text-app-strong">
-            <span className="block">{uiCopy.model}</span>
-            <Select value={model} onChange={(event) => setModel(event.target.value as BuiltInModel)}>
-              {BUILT_IN_MODELS.map((builtInModel) => (
-                <option key={builtInModel} value={builtInModel}>
-                  {builtInModel}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <div className="rounded-[20px] border border-black/8 bg-black/[0.02] px-4 py-4">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">{sectionCopy.debateLanguageLabel}</p>
-            <p className="mt-2 text-sm font-medium text-app-strong">{sectionCopy.debateLanguageValue}</p>
-          </div>
-          <div className="rounded-[20px] border border-black/8 bg-black/[0.02] px-4 py-4">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">{sectionCopy.structureLabel}</p>
-            <p className="mt-2 text-sm font-medium text-app-strong">{sectionCopy.structureValue}</p>
-          </div>
-        </div>
-      </SectionCard>
-
       <SectionCard title={sectionCopy.actionTitle} description={sectionCopy.actionDescription}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2 text-sm text-app-muted">
-            <span className="rounded-full border border-black/8 bg-black/[0.03] px-3 py-2">
-              {luminaIdentity.name} · {selectedLuminaLabel}
-            </span>
-            <span className="rounded-full border border-black/8 bg-black/[0.03] px-3 py-2">
-              {vigilaIdentity.name} · {selectedVigilaLabel}
-            </span>
-            <span className="rounded-full border border-black/8 bg-black/[0.03] px-3 py-2">{model}</span>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
+            </Button>
+            <p className="text-sm leading-6 text-app-muted">
+              {uiLanguage === "en"
+                ? "The debate will use the current default model and search engine."
+                : "本次辩论将使用当前默认模型与搜索引擎。"}
+            </p>
           </div>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
-          </Button>
+          <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[420px]">
+            <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-3">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
+                {sectionCopy.currentModelLabel}
+              </p>
+              <p className="mt-1 text-sm font-medium text-app-strong">{DEFAULT_MODEL}</p>
+            </div>
+            <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-3">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
+                {sectionCopy.currentSearchEngineLabel}
+              </p>
+              <p className="mt-1 text-sm font-medium text-app-strong">
+                {selectedSearchEngineLabel}
+              </p>
+            </div>
+          </div>
         </div>
       </SectionCard>
     </form>

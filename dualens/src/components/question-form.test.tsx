@@ -87,15 +87,21 @@ describe("QuestionForm", () => {
     expect(swapTemperamentLabel).toHaveClass("text-black");
   });
 
-  it("keeps role cards wide and shifts runtime controls next to the start button", () => {
+  it("keeps role cards wide and anchors runtime controls to the top of the action card", () => {
     render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
 
     expect(screen.getByTestId("role-config-grid")).toHaveClass("max-w-none");
     expect(screen.getByTestId("role-config-grid")).toHaveClass(
       "xl:grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)]"
     );
-    expect(screen.getByTestId("debate-action-row")).toHaveClass("lg:justify-end");
-    expect(screen.getByTestId("debate-action-row")).toHaveClass("lg:-mt-2");
+
+    const actionSection = screen.getByRole("heading", { level: 2, name: "操作区" }).closest("section");
+    const actionHeader = actionSection?.firstElementChild;
+    const actionRow = screen.getByTestId("debate-action-row");
+
+    expect(actionHeader).toContainElement(actionRow);
+    expect(actionRow).toHaveClass("lg:justify-end");
+    expect(actionRow).not.toHaveClass("lg:-mt-2");
   });
 
   it("does not server-render a hard-coded search-engine fallback", () => {

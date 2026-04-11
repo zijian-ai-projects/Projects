@@ -115,6 +115,34 @@ function QuestionFormImpl({
   const toggleSpeakingOrder = () => {
     setFirstSpeaker((current) => (current === "lumina" ? "vigila" : "lumina"));
   };
+  const runtimeControls = (
+    <div
+      data-testid="debate-action-row"
+      className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end"
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
+        <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
+            {sectionCopy.currentModelLabel}
+          </p>
+          <p className="mt-1 text-sm font-medium text-app-strong">{DEFAULT_MODEL}</p>
+        </div>
+        <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
+            {sectionCopy.currentSearchEngineLabel}
+          </p>
+          <p className="mt-1 text-sm font-medium text-app-strong">
+            {selectedSearchEngineLabel ?? sectionCopy.searchEngineLoadingLabel}
+          </p>
+        </div>
+      </div>
+      <div className="flex justify-start lg:shrink-0 lg:justify-end">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <form
@@ -270,33 +298,12 @@ function QuestionFormImpl({
         </div>
       </SectionCard>
 
-      <SectionCard title={sectionCopy.actionTitle} description={sectionCopy.actionDescription}>
-        <div
-          data-testid="debate-action-row"
-          className="flex flex-col gap-3 lg:-mt-2 lg:flex-row lg:items-start lg:justify-end"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
-            <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
-                {sectionCopy.currentModelLabel}
-              </p>
-              <p className="mt-1 text-sm font-medium text-app-strong">{DEFAULT_MODEL}</p>
-            </div>
-            <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
-                {sectionCopy.currentSearchEngineLabel}
-              </p>
-              <p className="mt-1 text-sm font-medium text-app-strong">
-                {selectedSearchEngineLabel ?? sectionCopy.searchEngineLoadingLabel}
-              </p>
-            </div>
-          </div>
-          <div className="flex justify-start lg:shrink-0 lg:justify-end lg:pt-1">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? uiCopy.startingDebate : uiCopy.startDebate}
-            </Button>
-          </div>
-        </div>
+      <SectionCard
+        title={sectionCopy.actionTitle}
+        description={sectionCopy.actionDescription}
+        action={runtimeControls}
+      >
+        {null}
       </SectionCard>
     </form>
   );

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
 
 export function SectionCard({
   title,
@@ -13,6 +13,8 @@ export function SectionCard({
   children: ReactNode;
   className?: string;
 }) {
+  const hasChildren = Children.count(children) > 0;
+
   return (
     <section
       className={[
@@ -22,7 +24,14 @@ export function SectionCard({
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div
+        className={[
+          "flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between",
+          hasChildren ? "mb-5" : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div className="space-y-1">
           <h2 className="text-lg font-semibold text-app-strong">{title}</h2>
           {description ? <p className="text-sm leading-6 text-app-muted">{description}</p> : null}

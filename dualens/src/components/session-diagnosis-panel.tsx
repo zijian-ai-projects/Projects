@@ -25,24 +25,6 @@ const CATEGORY_LABELS = {
 } as const;
 
 function getHeadline(diagnosis: SessionDiagnosis, copy: UiCopy) {
-  const step = diagnosis.failingStep.toLowerCase();
-
-  if (step.includes("opening")) {
-    return "Opening arguments generation failed.";
-  }
-
-  if (step.includes("debate")) {
-    return "Debate turn generation failed.";
-  }
-
-  if (step.includes("summary")) {
-    return "Summary generation failed.";
-  }
-
-  if (step.includes("research") || step.includes("search") || step.includes("prepare-session")) {
-    return "Session preparation failed.";
-  }
-
   return copy.sessionDiagnosisStageHeadlines[diagnosis.stage];
 }
 
@@ -60,7 +42,7 @@ export function SessionDiagnosisPanel({
   return (
     <section
       aria-label={copy.sessionDiagnosisTitle}
-      className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-sm"
+      className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_10px_28px_rgba(0,0,0,0.03)]"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
@@ -69,7 +51,7 @@ export function SessionDiagnosisPanel({
           </p>
           <h2 className="text-lg font-semibold text-ink">{getHeadline(diagnosis, copy)}</h2>
         </div>
-        <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink/70">
+        <span className="rounded-full border border-black/10 bg-black/[0.03] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink/70">
           {stageLabel}
         </span>
       </div>
@@ -118,7 +100,7 @@ export function SessionDiagnosisPanel({
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-amber-200 bg-white/85 p-3">
+        <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-3">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
             {copy.sessionDiagnosisSuggestedFixLabel}
           </p>

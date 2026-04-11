@@ -233,6 +233,51 @@ describe("SessionShell", () => {
     );
   });
 
+  it("shows persisted diagnosis details when polling returns a diagnosed session", async () => {
+    const user = setupUser();
+    const createSession = vi.fn().mockResolvedValue(
+      buildSession({
+        id: "s-diagnosis",
+        stage: "research"
+      })
+    );
+    const continueSession = vi.fn().mockResolvedValue(
+      buildSession({
+        id: "s-diagnosis",
+        stage: "opening",
+        diagnosis: {
+          stage: "opening",
+          failingStep: "run-opening-round",
+          providerBaseUrl: "https://api.openai.com/v1",
+          providerModel: "gpt-4.1",
+          category: "endpoint-shape",
+          summary: "The provider returned a response with the wrong shape.",
+          detail: "Model response for DebateTurn was not valid JSON",
+          suggestedFix: "Check whether the endpoint supports OpenAI-compatible chat completions."
+        }
+      })
+    );
+
+    render(
+      <SessionShell
+        uiLanguage="en"
+        createSession={createSession}
+        continueSession={continueSession}
+      />
+    );
+
+    await user.type(screen.getByLabelText("Decision question"), "Should I move to another city?");
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to advance debate. The provider returned a response with the wrong shape. Check whether the endpoint supports OpenAI-compatible chat completions."
+    );
+    expect(screen.getByRole("region", { name: "Session diagnosis" })).toBeInTheDocument();
+    expect(screen.getByText("https://api.openai.com/v1")).toBeInTheDocument();
+    expect(screen.getByText("gpt-4.1")).toBeInTheDocument();
+    expect(screen.getByText("Model response for DebateTurn was not valid JSON")).toBeInTheDocument();
+  });
+
   it("stops an active session before completion", async () => {
     const user = setupUser();
     const createSession = vi.fn().mockResolvedValue(

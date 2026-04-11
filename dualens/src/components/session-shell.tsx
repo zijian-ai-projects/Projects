@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { QuestionForm } from "@/components/question-form";
 import { DebateTimeline } from "@/components/debate-timeline";
 import { EvidencePanel } from "@/components/evidence-panel";
+import { SessionDiagnosisPanel } from "@/components/session-diagnosis-panel";
 import { SummaryPanel } from "@/components/summary-panel";
 import { getLocalizedSideIdentityCopy } from "@/lib/side-identities";
 import { Button } from "@/components/ui/button";
@@ -249,6 +250,10 @@ const stageLabels: Partial<Record<SessionStage, string>> = {
   complete: "Summary ready"
 };
 
+function formatSessionDiagnosisErrorDetail(diagnosis: SessionDiagnosis) {
+  return [diagnosis.summary, diagnosis.suggestedFix].filter(Boolean).join(" ");
+}
+
 function ResearchStatus({
   progress,
   copy
@@ -396,7 +401,7 @@ export function SessionShell({
           setSession(next);
           if (next.diagnosis) {
             setErrorKind("advance");
-            setErrorDetail(null);
+            setErrorDetail(formatSessionDiagnosisErrorDetail(next.diagnosis));
           } else {
             setErrorKind(null);
             setErrorDetail(null);
@@ -487,6 +492,10 @@ export function SessionShell({
           >
             <SideIdentitySummary language={uiLanguage} />
           </SectionCard>
+
+          {session.diagnosis ? (
+            <SessionDiagnosisPanel diagnosis={session.diagnosis} copy={uiCopy} />
+          ) : null}
 
           <ResearchStatus progress={session.researchProgress} copy={uiCopy} />
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.9fr)]">

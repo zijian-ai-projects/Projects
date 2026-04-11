@@ -13,11 +13,12 @@ import {
   persistSessionHistory,
   type HistoryRecordMeta
 } from "@/lib/history-file-writer";
+import { loadActiveModelProviderRuntimeConfig } from "@/lib/model-provider-preferences";
 import { loadSelectedSearchEngineLabel } from "@/lib/search-engine-preferences";
 import type {
   AppLanguage,
-  BuiltInModel,
   DebatePresetSelection,
+  OpenAICompatibleProviderConfig,
   SessionDiagnosis,
   ResearchPreviewItem,
   SessionRecord,
@@ -52,7 +53,8 @@ export type SessionInput = {
   presetSelection: DebatePresetSelection;
   firstSpeaker: "lumina" | "vigila";
   language: AppLanguage;
-  model: BuiltInModel;
+  model: string;
+  providerConfig?: OpenAICompatibleProviderConfig;
 };
 
 export type SessionView = Pick<
@@ -346,12 +348,14 @@ export function SessionShell({
       setErrorKind(null);
       setErrorDetail(null);
       try {
+        const providerConfig = loadActiveModelProviderRuntimeConfig();
         const payload: SessionInput = {
           question: input.question,
           presetSelection: input.presetSelection,
           firstSpeaker: input.firstSpeaker,
           language: input.language,
-          model: input.model
+          model: providerConfig?.model ?? input.model,
+          ...(providerConfig ? { providerConfig } : {})
         };
         const next = await createSession(payload);
         setHistoryMeta({
@@ -361,7 +365,7 @@ export function SessionShell({
           presetSelection: input.presetSelection,
           firstSpeaker: input.firstSpeaker,
           language: input.language,
-          model: input.model,
+          model: payload.model,
           searchEngine
         });
         setSession(next);

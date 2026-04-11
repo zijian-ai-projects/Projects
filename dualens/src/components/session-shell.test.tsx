@@ -153,6 +153,46 @@ describe("SessionShell", () => {
     );
   });
 
+  it("submits the selected configured provider runtime config when starting debate", async () => {
+    const user = setupUser();
+    const createSession = vi.fn().mockResolvedValue(
+      buildSession({
+        id: "s-provider",
+        stage: "research"
+      })
+    );
+
+    window.localStorage.setItem("dualens:selectedModelProviderId", "openai");
+    window.localStorage.setItem(
+      "dualens:modelProviderConfigs",
+      JSON.stringify({
+        openai: {
+          providerId: "openai",
+          apiKey: "client-openai-key",
+          modelId: "gpt-4.1",
+          endpoint: "https://api.openai.com/v1",
+          extra: ""
+        }
+      })
+    );
+
+    render(<SessionShell uiLanguage="en" createSession={createSession} continueSession={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Decision question"), "Should I move to another city?");
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    expect(createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-4.1",
+        providerConfig: {
+          baseUrl: "https://api.openai.com/v1",
+          apiKey: "client-openai-key",
+          model: "gpt-4.1"
+        }
+      })
+    );
+  });
+
   it("shows the combined start error when create-session fails", async () => {
     const user = setupUser();
     const createSession = vi.fn().mockRejectedValue(new Error("Invalid session input"));

@@ -169,6 +169,48 @@ describe("runtime built-in model mapping", () => {
     fetchMock.mockRestore();
   });
 
+  it("uses a client-provided provider config and redacts the API key from returned sessions", async () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", undefined);
+    vi.stubEnv("OPENAI_API_KEY", undefined);
+    vi.stubEnv("api_key", undefined);
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => createOpenAIResponse());
+
+    const session = await runtime.createSession(
+      createSessionInput({
+        model: "gpt-4.1",
+        providerConfig: {
+          baseUrl: "https://gateway.example/v1",
+          apiKey: "client-openai-key",
+          model: "gpt-4.1"
+        }
+      })
+    );
+
+    await runtime.continueSession(session.id);
+    await runtime.continueSession(session.id);
+    await runtime.continueSession(session.id);
+
+    const providerCalls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("/chat/completions")
+    );
+
+    expect(session.config.provider).toMatchObject({
+      baseUrl: "https://gateway.example/v1",
+      model: "gpt-4.1"
+    });
+    expect(session.config.provider).not.toHaveProperty("apiKey");
+    expect(providerCalls.map((call) => String(call[0]))).toEqual([
+      "https://gateway.example/v1/chat/completions",
+      "https://gateway.example/v1/chat/completions"
+    ]);
+    expect(providerCalls[0]?.[1]?.headers).toMatchObject({
+      Authorization: "Bearer client-openai-key"
+    });
+
+    fetchMock.mockRestore();
+  });
+
   it("supports lowercase base_url and api_key environment variables", async () => {
     vi.stubEnv("DEEPSEEK_API_KEY", undefined);
     vi.stubEnv("OPENAI_API_KEY", undefined);

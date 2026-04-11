@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { SessionInput } from "@/components/session-shell";
+import { loadActiveModelProviderDisplay } from "@/lib/model-provider-preferences";
 import * as presetLibrary from "@/lib/presets";
 import { loadSelectedSearchEngineLabel } from "@/lib/search-engine-preferences";
 import { getLocalizedSideIdentityCopy } from "@/lib/side-identities";
@@ -40,6 +41,7 @@ function QuestionFormImpl({
     presetLibrary.TEMPERAMENT_PAIRS[0]?.options[0] ?? "cautious"
   );
   const [firstSpeaker, setFirstSpeaker] = useState<SpeakerSideKey>("lumina");
+  const [selectedModelLabel, setSelectedModelLabel] = useState<string | null>(null);
   const [selectedSearchEngineLabel, setSelectedSearchEngineLabel] = useState<string | null>(null);
   const [isSwapActive, setIsSwapActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,6 +93,7 @@ function QuestionFormImpl({
         };
 
   useEffect(() => {
+    setSelectedModelLabel(loadActiveModelProviderDisplay().modelLabel);
     setSelectedSearchEngineLabel(loadSelectedSearchEngineLabel());
   }, []);
 
@@ -125,7 +128,9 @@ function QuestionFormImpl({
           <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
             {sectionCopy.currentModelLabel}
           </p>
-          <p className="mt-1 text-sm font-medium text-app-strong">{DEFAULT_MODEL}</p>
+          <p className="mt-1 text-sm font-medium text-app-strong">
+            {selectedModelLabel ?? DEFAULT_MODEL}
+          </p>
         </div>
         <div className="rounded-[18px] border border-black/8 bg-black/[0.03] px-4 py-2.5">
           <p className="text-[11px] uppercase tracking-[0.16em] text-app-muted">
@@ -167,7 +172,7 @@ function QuestionFormImpl({
             } as SessionInput["presetSelection"],
             firstSpeaker,
             language: uiLanguage,
-            model: DEFAULT_MODEL
+            model: loadActiveModelProviderDisplay().modelLabel
           };
 
           await onSubmit(input);

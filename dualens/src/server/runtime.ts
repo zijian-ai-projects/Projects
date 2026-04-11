@@ -13,7 +13,6 @@ import { getUiCopy } from "@/lib/ui-copy";
 import { buildResearchProgressView } from "@/lib/types";
 import { createSessionInputSchema } from "@/lib/validators";
 import type {
-  BuiltInModel,
   DebateTurn,
   OpenAICompatibleProviderConfig,
   ResearchProgressView,
@@ -124,7 +123,7 @@ function getProviderApiKey() {
   return apiKey;
 }
 
-function resolveDeepSeekProviderConfig(model: BuiltInModel): OpenAICompatibleProviderConfig {
+function resolveDeepSeekProviderConfig(model: string): OpenAICompatibleProviderConfig {
   return {
     baseUrl: getProviderBaseUrl(),
     apiKey: getProviderApiKey(),
@@ -624,7 +623,7 @@ function startSessionRunner(sessionId: string) {
 export const runtime = {
   async createSession(input: unknown) {
     const parsed = createSessionInputSchema.parse(input);
-    const provider = resolveDeepSeekProviderConfig(parsed.model);
+    const provider = parsed.providerConfig ?? resolveDeepSeekProviderConfig(parsed.model);
 
     const session = await orchestrator.createSession({
       question: parsed.question,

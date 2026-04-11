@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { loadSelectedSearchEngineLabel } = vi.hoisted(() => ({
   loadSelectedSearchEngineLabel: vi.fn(() => "Tavily")
@@ -30,6 +30,10 @@ describe("QuestionForm", () => {
     loadSelectedSearchEngineLabel.mockReturnValue("Tavily");
   });
 
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it("removes the standalone model section and shows model plus search-engine summary", () => {
     render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
 
@@ -39,6 +43,26 @@ describe("QuestionForm", () => {
     expect(screen.getByText("当前搜索引擎")).toBeInTheDocument();
     expect(screen.getByText("Tavily")).toBeInTheDocument();
     expect(screen.queryByText("本次辩论将使用当前默认模型与搜索引擎。")).not.toBeInTheDocument();
+  });
+
+  it("shows the selected configured provider model in the action summary", async () => {
+    window.localStorage.setItem("dualens:selectedModelProviderId", "openai");
+    window.localStorage.setItem(
+      "dualens:modelProviderConfigs",
+      JSON.stringify({
+        openai: {
+          providerId: "openai",
+          apiKey: "client-openai-key",
+          modelId: "gpt-4.1",
+          endpoint: "https://api.openai.com/v1",
+          extra: ""
+        }
+      })
+    );
+
+    render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
+
+    expect(await screen.findByText("gpt-4.1")).toBeInTheDocument();
   });
 
   it("renders compact style labels instead of prefixed style summaries", () => {

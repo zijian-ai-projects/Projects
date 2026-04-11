@@ -110,7 +110,8 @@ export type SessionCreateInput = {
   firstSpeaker?: SpeakerSideKey;
   language?: AppLanguage;
   premise?: string;
-  model: BuiltInModel;
+  model: string;
+  providerConfig?: OpenAICompatibleProviderConfig;
   config?: Partial<SessionConfig>;
 };
 

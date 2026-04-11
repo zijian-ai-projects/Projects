@@ -114,6 +114,36 @@ describe("POST /api/session", () => {
     expect(payload.error).toBeDefined();
   });
 
+  it("accepts a selected provider config and never returns its API key", async () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", undefined);
+    vi.stubEnv("OPENAI_API_KEY", undefined);
+    vi.stubEnv("api_key", undefined);
+
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            model: "gpt-4.1",
+            providerConfig: {
+              baseUrl: "https://api.openai.com/v1",
+              apiKey: "client-openai-key",
+              model: "gpt-4.1"
+            }
+          })
+        )
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.config.provider).toEqual({
+      baseUrl: "https://api.openai.com/v1",
+      model: "gpt-4.1"
+    });
+  });
+
   it("rejects legacy provider fields at the client boundary", async () => {
     const response = await POST(
       new Request("http://localhost/api/session", {

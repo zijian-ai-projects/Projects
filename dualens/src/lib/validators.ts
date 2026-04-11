@@ -11,7 +11,12 @@ const TEMPERAMENT_PAIR_IDS = TEMPERAMENT_PAIRS.map(
 
 const trimmedStringSchema = z.string().trim();
 const trimmedOptionalStringSchema = z.string().trim().min(1).optional();
-const builtInModelSchema = z.enum(["deepseek-chat", "deepseek-reasoner"]);
+const modelSchema = trimmedStringSchema.min(1);
+const providerConfigSchema = z.object({
+  baseUrl: trimmedStringSchema.min(1).url(),
+  apiKey: trimmedStringSchema.min(1),
+  model: trimmedStringSchema.min(1)
+}).strict();
 const sessionConfigSchema = z.object({
   sourceStrategy: z.enum(["credible-first", "full-web"]).optional(),
   searchDepth: z.enum(["quick", "standard", "deep"]).optional(),
@@ -51,7 +56,8 @@ export const createSessionInputSchema = z
     firstSpeaker: z.enum(["lumina", "vigila"]).default("lumina"),
     language: z.enum(["zh-CN", "en"]).default("zh-CN"),
     premise: trimmedOptionalStringSchema,
-    model: builtInModelSchema,
+    model: modelSchema,
+    providerConfig: providerConfigSchema.optional(),
     config: sessionConfigSchema.optional()
   })
   .strict();

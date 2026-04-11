@@ -26,7 +26,8 @@ export function HistoryCard({
   model,
   roleSummary,
   status,
-  copy
+  copy,
+  onDelete
 }: {
   question: string;
   createdAt: string;
@@ -34,6 +35,7 @@ export function HistoryCard({
   roleSummary: string;
   status: HistoryStatus;
   copy?: HistoryCardCopy;
+  onDelete?: () => void;
 }) {
   const fallbackCopy: HistoryCardCopy = {
     complete: "已完成",
@@ -73,7 +75,7 @@ export function HistoryCard({
           <Button type="button" variant="secondary">
             {cardCopy.rerun}
           </Button>
-          <Button type="button" variant="ghost">
+          <Button type="button" variant="ghost" onClick={onDelete}>
             {cardCopy.delete}
           </Button>
         </div>

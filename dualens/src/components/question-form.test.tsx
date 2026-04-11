@@ -1,10 +1,15 @@
 import "@testing-library/jest-dom/vitest";
 
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { renderToString } from "react-dom/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { loadSelectedSearchEngineLabel } = vi.hoisted(() => ({
+  loadSelectedSearchEngineLabel: vi.fn(() => "Tavily")
+}));
 
 vi.mock("@/lib/search-engine-preferences", () => ({
-  loadSelectedSearchEngineLabel: () => "Tavily"
+  loadSelectedSearchEngineLabel
 }));
 
 import { QuestionForm } from "@/components/question-form";
@@ -21,6 +26,10 @@ function getCardBySideName(sideName: string) {
 }
 
 describe("QuestionForm", () => {
+  beforeEach(() => {
+    loadSelectedSearchEngineLabel.mockReturnValue("Tavily");
+  });
+
   it("removes the standalone model section and shows model plus search-engine summary", () => {
     render(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
 
@@ -55,5 +64,14 @@ describe("QuestionForm", () => {
     expect(swapTemperamentButton).toHaveClass("bg-white");
     expect(swapTemperamentButton).toHaveClass("text-black");
     expect(swapTemperamentLabel).toHaveClass("text-black");
+  });
+
+  it("does not server-render a hard-coded search-engine fallback", () => {
+    loadSelectedSearchEngineLabel.mockReturnValue("Google");
+
+    const html = renderToString(<QuestionForm onSubmit={vi.fn()} uiLanguage="zh-CN" />);
+
+    expect(html).not.toContain("Tavily");
+    expect(html).toContain("同步中");
   });
 });

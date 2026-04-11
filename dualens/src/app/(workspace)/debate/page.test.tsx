@@ -15,6 +15,8 @@ describe("DebatePage", () => {
     expect(screen.getByRole("heading", { level: 2, name: "操作区" })).toBeInTheDocument();
     expect(screen.getByText("当前模型")).toBeInTheDocument();
     expect(screen.getByText("当前搜索引擎")).toBeInTheDocument();
+    expect(screen.queryByText("围绕同一问题配置两位 AI 的立场、风格与模型，再启动正式的双智能体辩论流程。")).not.toBeInTheDocument();
+    expect(screen.getByText("围绕同一问题确认双方立场与风格后，直接启动正式的双智能体辩论流程。")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "开始辩论" })).toBeInTheDocument();
   });
 });

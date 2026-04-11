@@ -16,8 +16,8 @@ export default function DebatePage() {
         title={uiLanguage === "en" ? "Debate" : "辩论"}
         description={
           uiLanguage === "en"
-            ? "Configure the decision question, two roles, and model selection before launching a structured dual-agent debate."
-            : "围绕同一问题配置两位 AI 的立场、风格与模型，再启动正式的双智能体辩论流程。"
+            ? "Frame the decision question and confirm both roles before launching a structured dual-agent debate."
+            : "围绕同一问题确认双方立场与风格后，直接启动正式的双智能体辩论流程。"
         }
         action={
           <div

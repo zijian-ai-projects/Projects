@@ -40,7 +40,7 @@ function QuestionFormImpl({
     presetLibrary.TEMPERAMENT_PAIRS[0]?.options[0] ?? "cautious"
   );
   const [firstSpeaker, setFirstSpeaker] = useState<SpeakerSideKey>("lumina");
-  const [selectedSearchEngineLabel, setSelectedSearchEngineLabel] = useState("Tavily");
+  const [selectedSearchEngineLabel, setSelectedSearchEngineLabel] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [questionError, setQuestionError] = useState(false);
   const uiLanguage = controlledUiLanguage ?? "zh-CN";
@@ -72,6 +72,7 @@ function QuestionFormImpl({
           pairLabel: "Temperament pair",
           currentModelLabel: "Current model",
           currentSearchEngineLabel: "Current search engine",
+          searchEngineLoadingLabel: "Syncing",
           styleLabel: "Style"
         }
       : {
@@ -84,6 +85,7 @@ function QuestionFormImpl({
           pairLabel: "风格配对",
           currentModelLabel: "当前模型",
           currentSearchEngineLabel: "当前搜索引擎",
+          searchEngineLoadingLabel: "同步中",
           styleLabel: "风格"
         };
 
@@ -279,7 +281,7 @@ function QuestionFormImpl({
                 {sectionCopy.currentSearchEngineLabel}
               </p>
               <p className="mt-1 text-sm font-medium text-app-strong">
-                {selectedSearchEngineLabel}
+                {selectedSearchEngineLabel ?? sectionCopy.searchEngineLoadingLabel}
               </p>
             </div>
           </div>

@@ -1,10 +1,18 @@
 export type SourceStrategy = "credible-first" | "full-web";
 export type SummaryStyle = "balanced" | "concise" | "actionable";
 export type BuiltInModel = "deepseek-chat" | "deepseek-reasoner";
+export type SearchEngineId = "bing" | "baidu" | "google" | "tavily";
 export type OpenAICompatibleProviderConfig = {
   baseUrl: string;
   apiKey: string;
   model: string;
+};
+export type SearchEngineRuntimeConfig = {
+  engineId: SearchEngineId;
+  apiKey: string;
+  endpoint: string;
+  engineIdentifier?: string;
+  extra?: string;
 };
 
 export type DiagnosticCategory =
@@ -20,6 +28,7 @@ export type DebateLanguage = "en" | "zh-CN";
 export type AppLanguage = DebateLanguage;
 export type SideIdentityKey = "lumina" | "vigila";
 export type SpeakerSideKey = SideIdentityKey;
+export type DebateMode = "shared-evidence" | "private-evidence";
 export type TemperamentOption =
   | "cautious"
   | "aggressive"
@@ -92,16 +101,18 @@ export type SessionDiagnosisContext = {
 };
 
 export type SessionConfig = {
+  debateMode: DebateMode;
   sourceStrategy: SourceStrategy;
   searchDepth: "quick" | "standard" | "deep";
   roundCount: number;
   summaryStyle: SummaryStyle;
   provider: OpenAICompatibleProviderConfig;
+  searchProvider?: SearchEngineRuntimeConfig;
 };
 
 export type SessionConfigDefaults = Pick<
   SessionConfig,
-  "sourceStrategy" | "searchDepth" | "roundCount" | "summaryStyle"
+  "debateMode" | "sourceStrategy" | "searchDepth" | "roundCount" | "summaryStyle"
 >;
 
 export type SessionCreateInput = {
@@ -110,7 +121,9 @@ export type SessionCreateInput = {
   firstSpeaker?: SpeakerSideKey;
   language?: AppLanguage;
   premise?: string;
-  model: BuiltInModel;
+  model: string;
+  providerConfig?: OpenAICompatibleProviderConfig;
+  searchConfig?: SearchEngineRuntimeConfig;
   config?: Partial<SessionConfig>;
 };
 
@@ -124,11 +137,24 @@ export type Evidence = {
   dataPoints?: string[];
 };
 
+export type PrivateEvidencePools = Partial<Record<SpeakerSideKey, Evidence[]>>;
+
+export type DebateTurnAnalysis = {
+  factualIssues: string[];
+  logicalIssues: string[];
+  valueIssues: string[];
+  searchFocus: string;
+};
+
 export type DebateTurn = {
   id: string;
   speaker: string;
   content: string;
   referencedEvidenceIds: string[];
+  side?: SpeakerSideKey;
+  round?: number;
+  analysis?: DebateTurnAnalysis;
+  privateEvidenceIds?: string[];
 };
 
 export type DebateSummaryPoint = {
@@ -191,6 +217,7 @@ export function buildResearchProgressView(
 
 export type SessionRecord = {
   id: string;
+  debateMode: DebateMode;
   question: string;
   presetSelection: DebatePresetSelection;
   firstSpeaker: SpeakerSideKey;
@@ -202,5 +229,6 @@ export type SessionRecord = {
   researchProgress?: ResearchProgressView;
   diagnosis?: SessionDiagnosis;
   turns: DebateTurn[];
+  privateEvidence?: PrivateEvidencePools;
   summary?: DebateSummary;
 };

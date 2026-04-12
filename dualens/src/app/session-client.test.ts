@@ -1,10 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import HomePage from "@/app/page";
 import { createSession } from "@/app/session-client";
 
 describe("createSession", () => {
@@ -200,47 +196,5 @@ describe("createSession", () => {
     expect(caughtError).not.toHaveProperty("diagnosis");
 
     fetchMock.mockRestore();
-  });
-
-  it("defaults the homepage to Chinese and keeps the taiji to the left of the product name", async () => {
-    const user = userEvent.setup();
-    const { container } = render(React.createElement(HomePage));
-
-    const brandHeading = screen.getByRole("heading", { level: 1, name: "两仪决" });
-    const uiLanguageToggle = screen.getByLabelText("界面语言");
-    const taiji = container.querySelector("svg");
-
-    await waitFor(() => {
-      expect(document.title).toBe("两仪决");
-    });
-    expect(taiji).not.toBeNull();
-    expect(
-      taiji?.compareDocumentPosition(brandHeading) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(
-      brandHeading.compareDocumentPosition(uiLanguageToggle) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(screen.getByRole("heading", { level: 1, name: "两仪决" })).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { level: 1, name: "Dualens / 两仪决" })
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("界面语言")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Research, debate, and summary stay visible without crowding the form.")
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "English" }));
-
-    await waitFor(() => {
-      expect(document.title).toBe("Dualens");
-    });
-    expect(screen.getByRole("heading", { level: 1, name: "Dualens" })).toBeInTheDocument();
-    expect(
-      taiji?.compareDocumentPosition(screen.getByRole("heading", { level: 1, name: "Dualens" })) &
-        Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(
-      screen.queryByRole("heading", { level: 1, name: "Dualens / 两仪决" })
-    ).not.toBeInTheDocument();
   });
 });

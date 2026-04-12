@@ -1,18 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { QuestionForm } from "@/components/question-form";
 import { DebateTimeline } from "@/components/debate-timeline";
 import { EvidencePanel } from "@/components/evidence-panel";
+import { SessionDiagnosisPanel } from "@/components/session-diagnosis-panel";
 import { SummaryPanel } from "@/components/summary-panel";
 import { getLocalizedSideIdentityCopy } from "@/lib/side-identities";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { getUiCopy, UI_LANGUAGE_OPTIONS } from "@/lib/ui-copy";
+import { SectionCard } from "@/components/common/section-card";
+import { getUiCopy } from "@/lib/ui-copy";
+import { useOptionalDebateQuestionDraft } from "@/lib/debate-question-draft";
+import {
+  useOptionalDebateWorkspaceState,
+  type HistorySaveStatus,
+  type SessionErrorKind
+} from "@/lib/debate-workspace-state";
+import {
+  persistSessionHistory,
+  type HistoryRecordMeta
+} from "@/lib/history-file-writer";
+import { loadActiveModelProviderRuntimeConfig } from "@/lib/model-provider-preferences";
+import {
+  loadActiveSearchEngineRuntimeConfig,
+  loadSelectedSearchEngineLabel
+} from "@/lib/search-engine-preferences";
 import type {
   AppLanguage,
-  BuiltInModel,
   DebatePresetSelection,
+  DebateMode,
+  DebateTurnAnalysis,
+  Evidence,
+  OpenAICompatibleProviderConfig,
+  PrivateEvidencePools,
+  SearchEngineRuntimeConfig,
   SessionDiagnosis,
   ResearchPreviewItem,
   SessionRecord,
@@ -20,8 +41,6 @@ import type {
   UiLanguage
 } from "@/lib/types";
 
-type UiCopy = ReturnType<typeof getUiCopy>;
-type SessionErrorKind = "start" | "advance" | "stop";
 const SESSION_DIAGNOSIS_STAGES = new Set<SessionDiagnosis["stage"]>(["research", "opening", "debate", "complete"]);
 const DIAGNOSTIC_CATEGORIES = new Set<SessionDiagnosis["category"]>([
   "auth",
@@ -44,15 +63,26 @@ const SESSION_POLL_INTERVAL_MS = process.env.NODE_ENV === "test" ? 0 : 1000;
 
 export type SessionInput = {
   question: string;
+  debateMode: DebateMode;
   presetSelection: DebatePresetSelection;
   firstSpeaker: "lumina" | "vigila";
   language: AppLanguage;
-  model: BuiltInModel;
+  model: string;
+  providerConfig?: OpenAICompatibleProviderConfig;
+  searchConfig?: SearchEngineRuntimeConfig;
 };
 
 export type SessionView = Pick<
   SessionRecord,
-  "id" | "stage" | "evidence" | "turns" | "summary" | "researchProgress" | "diagnosis"
+  | "id"
+  | "debateMode"
+  | "stage"
+  | "evidence"
+  | "privateEvidence"
+  | "turns"
+  | "summary"
+  | "researchProgress"
+  | "diagnosis"
 >;
 
 async function createDemoSession(input: SessionInput): Promise<SessionView> {
@@ -124,13 +154,52 @@ function isEvidence(value: unknown): value is SessionView["evidence"][number] {
   );
 }
 
+function isSpeakerSideKey(value: unknown): value is SessionRecord["firstSpeaker"] {
+  return value === "lumina" || value === "vigila";
+}
+
+function isDebateMode(value: unknown): value is DebateMode {
+  return value === "shared-evidence" || value === "private-evidence";
+}
+
+function isDebateTurnAnalysis(value: unknown): value is DebateTurnAnalysis {
+  return (
+    isRecord(value) &&
+    isStringArray(value.factualIssues) &&
+    isStringArray(value.logicalIssues) &&
+    isStringArray(value.valueIssues) &&
+    typeof value.searchFocus === "string"
+  );
+}
+
+function isPrivateEvidencePools(value: unknown): value is PrivateEvidencePools {
+  if (value === undefined) {
+    return true;
+  }
+
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return Object.entries(value).every(
+    ([side, evidence]) =>
+      isSpeakerSideKey(side) &&
+      Array.isArray(evidence) &&
+      evidence.every((item): item is Evidence => isEvidence(item))
+  );
+}
+
 function isDebateTurn(value: unknown): value is SessionView["turns"][number] {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
     typeof value.speaker === "string" &&
     typeof value.content === "string" &&
-    isStringArray(value.referencedEvidenceIds)
+    isStringArray(value.referencedEvidenceIds) &&
+    (value.side === undefined || isSpeakerSideKey(value.side)) &&
+    (value.round === undefined || typeof value.round === "number") &&
+    (value.analysis === undefined || isDebateTurnAnalysis(value.analysis)) &&
+    (value.privateEvidenceIds === undefined || isStringArray(value.privateEvidenceIds))
   );
 }
 
@@ -188,10 +257,12 @@ function isSessionViewResponse(value: unknown): value is SessionView {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
+    isDebateMode(value.debateMode) &&
     typeof value.stage === "string" &&
     SESSION_VIEW_STAGES.has(value.stage as SessionStage) &&
     Array.isArray(value.evidence) &&
     value.evidence.every(isEvidence) &&
+    isPrivateEvidencePools(value.privateEvidence) &&
     Array.isArray(value.turns) &&
     value.turns.every(isDebateTurn) &&
     (value.summary === undefined || isDebateSummary(value.summary)) &&
@@ -242,50 +313,30 @@ const stageLabels: Partial<Record<SessionStage, string>> = {
   complete: "Summary ready"
 };
 
-function ResearchStatus({
-  progress,
-  copy
-}: {
-  progress?: SessionView["researchProgress"];
-  copy: UiCopy;
-}) {
-  if (!progress) {
-    return null;
-  }
-
-  const sourceLabel =
-    progress.sourceCount === 1
-      ? copy.sourceCountOne
-      : copy.sourceCountMany.replace("{count}", String(progress.sourceCount));
-  const evidenceLabel =
-    progress.evidenceCount === 1
-      ? copy.evidenceCountOne
-      : copy.evidenceCountMany.replace("{count}", String(progress.evidenceCount));
-  const stageLabel = copy.researchProgressStageLabels[progress.stage];
-
-  return (
-    <section aria-label={copy.researchProgressTitle} aria-live="polite" className="research-status">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/50">{copy.researchProgressTitle}</p>
-          <h2 className="mt-2 text-lg font-semibold text-ink">{stageLabel}</h2>
-        </div>
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl bg-white/80 p-3">
-          <p className="text-xs uppercase tracking-[0.16em] text-ink/50">{copy.sourceLabel}</p>
-          <p className="mt-1 text-sm font-medium text-ink">{sourceLabel}</p>
-        </div>
-        <div className="rounded-2xl bg-white/80 p-3">
-          <p className="text-xs uppercase tracking-[0.16em] text-ink/50">{copy.evidenceLabel}</p>
-          <p className="mt-1 text-sm font-medium text-ink">{evidenceLabel}</p>
-        </div>
-      </div>
-    </section>
-  );
+function formatSessionDiagnosisErrorDetail(diagnosis: SessionDiagnosis) {
+  return [diagnosis.summary, diagnosis.suggestedFix].filter(Boolean).join(" ");
 }
 
-function SideIdentitySummary({ language }: { language: UiLanguage }) {
+function getLatestTurnBySide(turns: SessionView["turns"], side: SessionRecord["firstSpeaker"]) {
+  for (let index = turns.length - 1; index >= 0; index -= 1) {
+    const turn = turns[index];
+
+    if (turn.side === side) {
+      return turn;
+    }
+  }
+
+  return null;
+}
+
+function SideIdentitySummary({
+  language,
+  turns
+}: {
+  language: UiLanguage;
+  turns: SessionView["turns"];
+}) {
+  const copy = getUiCopy(language);
   const lumina = getLocalizedSideIdentityCopy("lumina", language);
   const vigila = getLocalizedSideIdentityCopy("vigila", language);
 
@@ -294,7 +345,13 @@ function SideIdentitySummary({ language }: { language: UiLanguage }) {
       aria-label={language === "en" ? "Debate sides" : "辩论双方"}
       className="grid gap-3 md:grid-cols-2"
     >
-      {[lumina, vigila].map((identity) => (
+      {[
+        { side: "lumina" as const, identity: lumina },
+        { side: "vigila" as const, identity: vigila }
+      ].map(({ side, identity }) => {
+        const latestTurn = getLatestTurnBySide(turns, side);
+
+        return (
         <div
           key={identity.name}
           className="rounded-2xl border border-black/8 bg-white/80 px-4 py-3"
@@ -303,8 +360,12 @@ function SideIdentitySummary({ language }: { language: UiLanguage }) {
           <div className="mt-1 text-xs uppercase tracking-[0.16em] text-ink/56">
             {identity.descriptor}
           </div>
+          <p className="mt-3 text-sm leading-6 text-ink/75">
+            {latestTurn?.content ?? copy.awaitingTurn}
+          </p>
         </div>
-      ))}
+        );
+      })}
     </section>
   );
 }
@@ -312,42 +373,102 @@ function SideIdentitySummary({ language }: { language: UiLanguage }) {
 export function SessionShell({
   createSession = createDemoSession,
   continueSession = continueDemoSession,
-  stopSession = stopDemoSession
+  stopSession = stopDemoSession,
+  uiLanguage = "zh-CN"
 }: {
   createSession?: (input: SessionInput) => Promise<SessionView>;
   continueSession?: (sessionId: string) => Promise<SessionView>;
   stopSession?: (sessionId: string) => Promise<SessionView>;
+  uiLanguage?: UiLanguage;
 }) {
-  const [session, setSession] = useState<SessionView | null>(null);
-  const [errorKind, setErrorKind] = useState<SessionErrorKind | null>(null);
-  const [errorDetail, setErrorDetail] = useState<string | null>(null);
-  const [isStopping, setIsStopping] = useState(false);
-  const [uiLanguage, setUiLanguage] = useState<UiLanguage>("zh-CN");
+  const workspaceState = useOptionalDebateWorkspaceState();
+  const [localSession, setLocalSession] = useState<SessionView | null>(null);
+  const [localHistoryMeta, setLocalHistoryMeta] = useState<
+    (HistoryRecordMeta & { sessionId: string }) | null
+  >(null);
+  const [localErrorKind, setLocalErrorKind] = useState<SessionErrorKind | null>(null);
+  const [localErrorDetail, setLocalErrorDetail] = useState<string | null>(null);
+  const [localIsStopping, setLocalIsStopping] = useState(false);
+  const [localHistorySaveStatus, setLocalHistorySaveStatus] = useState<HistorySaveStatus>("idle");
+  const [localQuestionDraft, setLocalQuestionDraft] = useState("");
+  const workspaceQuestionDraft = useOptionalDebateQuestionDraft();
+  const persistQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const latestHistorySessionIdRef = useRef<string | null>(null);
   const uiCopy = getUiCopy(uiLanguage);
+  const session = workspaceState?.session ?? localSession;
+  const setSession = workspaceState?.setSession ?? setLocalSession;
+  const historyMeta = workspaceState?.historyMeta ?? localHistoryMeta;
+  const setHistoryMeta = workspaceState?.setHistoryMeta ?? setLocalHistoryMeta;
+  const errorKind = workspaceState?.errorKind ?? localErrorKind;
+  const setErrorKind = workspaceState?.setErrorKind ?? setLocalErrorKind;
+  const errorDetail = workspaceState?.errorDetail ?? localErrorDetail;
+  const setErrorDetail = workspaceState?.setErrorDetail ?? setLocalErrorDetail;
+  const isStopping = workspaceState?.isStopping ?? localIsStopping;
+  const setIsStopping = workspaceState?.setIsStopping ?? setLocalIsStopping;
+  const historySaveStatus = workspaceState?.historySaveStatus ?? localHistorySaveStatus;
+  const setHistorySaveStatus = workspaceState?.setHistorySaveStatus ?? setLocalHistorySaveStatus;
+  const questionDraft = workspaceState ?? workspaceQuestionDraft ?? {
+    question: localQuestionDraft,
+    setQuestion: setLocalQuestionDraft
+  };
   const errorMessage = errorKind
     ? [uiCopy.sessionErrors[errorKind], errorDetail].filter(Boolean).join(" ")
     : null;
+  const historySaveMessage =
+    session?.stage === "complete" && historySaveStatus === "skipped"
+      ? uiCopy.historyFolderReminder
+      : session?.stage === "complete" && historySaveStatus === "error"
+        ? uiCopy.historySaveError
+        : null;
   const handleSubmit = useCallback(
     async (input: SessionInput) => {
+      const createdAt = new Date().toISOString();
+      const searchEngine = loadSelectedSearchEngineLabel();
       setSession(null);
+      setHistoryMeta(null);
       setErrorKind(null);
       setErrorDetail(null);
+      setIsStopping(false);
+      setHistorySaveStatus("idle");
       try {
+        const providerConfig = loadActiveModelProviderRuntimeConfig();
+        const searchConfig = loadActiveSearchEngineRuntimeConfig();
         const payload: SessionInput = {
+          question: input.question,
+          debateMode: input.debateMode,
+          presetSelection: input.presetSelection,
+          firstSpeaker: input.firstSpeaker,
+          language: input.language,
+          model: providerConfig?.model ?? input.model,
+          ...(providerConfig ? { providerConfig } : {}),
+          ...(searchConfig ? { searchConfig } : {})
+        };
+        const next = await createSession(payload);
+        setHistoryMeta({
+          sessionId: next.id,
+          createdAt,
           question: input.question,
           presetSelection: input.presetSelection,
           firstSpeaker: input.firstSpeaker,
           language: input.language,
-          model: input.model
-        };
-        const next = await createSession(payload);
+          model: payload.model,
+          searchEngine
+        });
         setSession(next);
       } catch (error) {
         setErrorDetail(error instanceof Error && error.message.trim().length > 0 ? error.message : null);
         setErrorKind("start");
       }
     },
-    [createSession]
+    [
+      createSession,
+      setErrorDetail,
+      setErrorKind,
+      setHistoryMeta,
+      setHistorySaveStatus,
+      setIsStopping,
+      setSession
+    ]
   );
 
   useEffect(() => {
@@ -369,7 +490,7 @@ export function SessionShell({
           setSession(next);
           if (next.diagnosis) {
             setErrorKind("advance");
-            setErrorDetail(null);
+            setErrorDetail(formatSessionDiagnosisErrorDetail(next.diagnosis));
           } else {
             setErrorKind(null);
             setErrorDetail(null);
@@ -397,131 +518,133 @@ export function SessionShell({
         clearTimeout(timeoutId);
       }
     };
-  }, [continueSession, session]);
+  }, [continueSession, session, setErrorDetail, setErrorKind, setSession]);
+
+  useEffect(() => {
+    if (!session || !historyMeta) {
+      return;
+    }
+
+    latestHistorySessionIdRef.current = historyMeta.sessionId;
+    persistQueueRef.current = persistQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const result = await persistSessionHistory(historyMeta, session);
+
+        if (latestHistorySessionIdRef.current === historyMeta.sessionId) {
+          setHistorySaveStatus(result.status);
+        }
+
+        return result;
+      });
+  }, [historyMeta, session, setHistorySaveStatus]);
+
+  const questionForm = (
+    <QuestionForm
+      uiLanguage={uiLanguage}
+      onSubmit={handleSubmit}
+      questionValue={questionDraft.question}
+      onQuestionChange={questionDraft.setQuestion}
+      presetSelectionValue={workspaceState?.draftPresetSelection ?? undefined}
+      onPresetSelectionChange={workspaceState?.setDraftPresetSelection}
+      firstSpeakerValue={workspaceState?.draftFirstSpeaker ?? undefined}
+      onFirstSpeakerChange={workspaceState?.setDraftFirstSpeaker}
+      debateModeValue={workspaceState?.draftDebateMode ?? undefined}
+      onDebateModeChange={workspaceState?.setDraftDebateMode}
+    />
+  );
+  const notices = (
+    <>
+      {errorMessage ? (
+        <p className="session-alert" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
+      {historySaveMessage ? (
+        <p
+          className="session-alert"
+          role={historySaveStatus === "error" ? "alert" : "status"}
+        >
+          {historySaveMessage}
+        </p>
+      ) : null}
+    </>
+  );
+  const sessionWorkspace = session ? (
+        <section aria-label={uiCopy.debateWorkspaceLabel} className="space-y-6">
+          <SectionCard
+            title={uiLanguage === "en" ? "Current session" : "当前会话"}
+            description={
+              session.stage === "complete"
+                ? uiCopy.workspaceCompleteStatus
+                : uiCopy.workspaceActiveStatus
+            }
+            action={
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-full border border-black bg-black px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-white">
+                  {uiCopy.sessionStageLabels[session.stage] ?? stageLabels[session.stage] ?? session.stage}
+                </span>
+                {session.stage !== "complete" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isStopping}
+                    onClick={async () => {
+                      setErrorKind(null);
+                      setErrorDetail(null);
+                      setIsStopping(true);
+                      try {
+                        const next = await stopSession(session.id);
+                        setSession(next);
+                      } catch (error) {
+                        setErrorDetail(error instanceof Error && error.message.trim().length > 0 ? error.message : null);
+                        setErrorKind("stop");
+                      } finally {
+                        setIsStopping(false);
+                      }
+                    }}
+                  >
+                    {isStopping ? uiCopy.stopping : uiCopy.stopDebate}
+                  </Button>
+                ) : null}
+              </div>
+            }
+          >
+            <SideIdentitySummary language={uiLanguage} turns={session.turns} />
+          </SectionCard>
+
+          {session.diagnosis ? (
+            <SessionDiagnosisPanel diagnosis={session.diagnosis} copy={uiCopy} />
+          ) : null}
+
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.9fr)]">
+            <DebateTimeline turns={session.turns} evidence={session.evidence} language={uiLanguage} />
+            <EvidencePanel
+              evidence={session.evidence}
+              privateEvidence={session.privateEvidence}
+              previewItems={session.researchProgress?.previewItems}
+              onUploadEvidence={(localEvidence) =>
+                setSession((current) =>
+                  current
+                    ? {
+                        ...current,
+                        evidence: [...current.evidence, ...localEvidence]
+                      }
+                    : current
+                )
+              }
+              language={uiLanguage}
+            />
+          </div>
+          <SummaryPanel summary={session.summary} evidence={session.evidence} language={uiLanguage} />
+        </section>
+  ) : null;
 
   return (
-    <main className="min-h-screen px-4 py-6 text-ink sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <Card className="relative overflow-hidden border-black/8 bg-[rgba(255,255,255,0.9)]">
-          <div aria-hidden className="pointer-events-none absolute inset-0">
-            <div className="absolute -left-8 top-8 h-24 w-24 rounded-full bg-[radial-gradient(circle_at_center,rgba(191,91,44,0.08),transparent_70%)]" />
-          </div>
-          <CardHeader className="relative space-y-5">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-3xl space-y-4">
-                <div className="flex items-start gap-4">
-                  <div aria-hidden className="relative shrink-0">
-                    <svg
-                      className="relative h-20 w-20 text-ink/90 opacity-90 sm:h-24 sm:w-24 xl:h-36 xl:w-36"
-                      viewBox="0 0 120 120"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <circle
-                        cx="60"
-                        cy="60"
-                        r="58"
-                        className="fill-paper/90 stroke-ink/15"
-                        strokeWidth="1.5"
-                      />
-                      <path
-                        d="M60 2a58 58 0 0 1 0 116a29 29 0 0 0 0-58a29 29 0 0 1 0-58Z"
-                        className="fill-ink"
-                      />
-                      <circle cx="60" cy="31" r="10" className="fill-paper" />
-                      <circle cx="60" cy="89" r="10" className="fill-ink" />
-                    </svg>
-                  </div>
-                  <div className="space-y-2 pt-2">
-                    <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-ink md:text-6xl">
-                      {uiCopy.heroTitle}
-                    </h1>
-                    <CardDescription className="max-w-2xl text-base leading-7">
-                      {uiCopy.heroLead}
-                    </CardDescription>
-                  </div>
-                </div>
-              </div>
-              <div className="flex shrink-0 flex-col items-center gap-4 lg:items-end">
-                <div
-                  aria-label={uiCopy.uiLanguageLabel}
-                  className="flex items-center rounded-full border border-black/8 bg-[rgba(255,255,255,0.9)] p-1 shadow-none"
-                >
-                  {UI_LANGUAGE_OPTIONS.map((language) => (
-                    <Button
-                      key={language}
-                      type="button"
-                      variant={uiLanguage === language ? "primary" : "ghost"}
-                      className="rounded-full px-3 py-1 text-xs"
-                      aria-pressed={uiLanguage === language}
-                      onClick={() => setUiLanguage(language)}
-                    >
-                      {language === "en" ? uiCopy.english : uiCopy.chinese}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <QuestionForm uiLanguage={uiLanguage} onSubmit={handleSubmit} />
-            {errorMessage ? (
-              <p className="session-alert mt-4" role="alert">
-                {errorMessage}
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        {session ? (
-          <section aria-label={uiCopy.debateWorkspaceLabel} className="space-y-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper">
-                {uiCopy.sessionStageLabels[session.stage] ?? stageLabels[session.stage] ?? session.stage}
-              </span>
-              <span className="text-sm text-ink/60">
-                {session.stage === "complete"
-                  ? uiCopy.workspaceCompleteStatus
-                  : uiCopy.workspaceActiveStatus}
-              </span>
-              {session.stage !== "complete" ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={isStopping}
-                  onClick={async () => {
-                    setErrorKind(null);
-                    setErrorDetail(null);
-                    setIsStopping(true);
-                    try {
-                      const next = await stopSession(session.id);
-                      setSession(next);
-                    } catch (error) {
-                      setErrorDetail(error instanceof Error && error.message.trim().length > 0 ? error.message : null);
-                      setErrorKind("stop");
-                    } finally {
-                      setIsStopping(false);
-                    }
-                  }}
-                >
-                  {isStopping ? uiCopy.stopping : uiCopy.stopDebate}
-                </Button>
-              ) : null}
-            </div>
-            <SideIdentitySummary language={uiLanguage} />
-            <ResearchStatus progress={session.researchProgress} copy={uiCopy} />
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.9fr)]">
-              <DebateTimeline turns={session.turns} evidence={session.evidence} language={uiLanguage} />
-              <EvidencePanel
-                evidence={session.evidence}
-                previewItems={session.researchProgress?.previewItems}
-                language={uiLanguage}
-              />
-            </div>
-            <SummaryPanel summary={session.summary} evidence={session.evidence} language={uiLanguage} />
-          </section>
-        ) : null}
-      </div>
-    </main>
+    <div className="space-y-8">
+      {questionForm}
+      {notices}
+      {sessionWorkspace}
+    </div>
   );
 }

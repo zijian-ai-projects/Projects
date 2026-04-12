@@ -4,28 +4,53 @@
 
 :root {
   color-scheme: light;
+  --color-app: 243 243 241;
+  --color-app-panel: 251 251 250;
+  --color-app-card: 255 255 255;
+  --color-app-soft: 236 236 232;
+  --color-app-foreground: 22 22 22;
+  --color-app-muted: 103 103 98;
+  --color-app-line: 219 219 215;
+  --color-app-strong: 17 17 17;
+  --color-app-inverse: 255 255 255;
+  --color-app-focus: 17 17 17;
+  --color-ink-landscape: 17 17 17;
+  --shadow-soft: rgba(0, 0, 0, 0.055);
+  --shadow-strong: rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-app: 17 17 16;
+  --color-app-panel: 25 25 23;
+  --color-app-card: 31 31 28;
+  --color-app-soft: 40 40 36;
+  --color-app-foreground: 235 235 228;
+  --color-app-muted: 166 166 154;
+  --color-app-line: 62 62 55;
+  --color-app-strong: 245 245 238;
+  --color-app-inverse: 17 17 16;
+  --color-app-focus: 230 230 220;
+  --color-ink-landscape: 245 245 238;
+  --shadow-soft: rgba(0, 0, 0, 0.28);
+  --shadow-strong: rgba(0, 0, 0, 0.46);
 }
 
 html {
-  background:
-    radial-gradient(circle at top, rgba(191, 91, 44, 0.12), transparent 35%),
-    radial-gradient(circle at bottom right, rgba(73, 106, 75, 0.1), transparent 28%),
-    #f7f2e8;
+  background: rgb(var(--color-app));
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  color: #151515;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.25)),
-    transparent;
+  color: rgb(var(--color-app-foreground));
+  background: rgb(var(--color-app));
   font-family:
-    "Iowan Old Style",
-    "Palatino Linotype",
-    "Book Antiqua",
-    Georgia,
-    serif;
+    "PingFang SC",
+    "Noto Sans SC",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   line-height: 1.5;
 }
 
@@ -34,7 +59,138 @@ body {
 }
 
 ::selection {
-  background: rgba(191, 91, 44, 0.28);
+  background: rgba(17, 17, 17, 0.14);
+}
+
+@keyframes taiji-counterclockwise {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-taiji-counterclockwise {
+  animation: taiji-counterclockwise 28s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes ink-mountain-drift {
+  0%,
+  100% {
+    transform: translate3d(-1rem, 0, 0) scale(1);
+    opacity: 0.78;
+  }
+
+  50% {
+    transform: translate3d(1.2rem, -0.8rem, 0) scale(1.02);
+    opacity: 0.92;
+  }
+}
+
+.animate-ink-mountain-drift {
+  animation: ink-mountain-drift 38s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes ink-mist-drift {
+  0%,
+  100% {
+    transform: translate3d(-2rem, 0, 0) scale(1);
+    opacity: 0.34;
+  }
+
+  50% {
+    transform: translate3d(2rem, -0.7rem, 0) scale(1.02);
+    opacity: 0.48;
+  }
+}
+
+@keyframes ink-near-drift {
+  0%,
+  100% {
+    transform: translate3d(-1rem, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(1rem, -0.5rem, 0);
+  }
+}
+
+.ink-landscape {
+  color: rgb(var(--color-ink-landscape));
+}
+
+.ink-landscape--home {
+  opacity: 1;
+}
+
+.ink-landscape--workspace {
+  opacity: 0.56;
+}
+
+.ink-landscape__taiji {
+  position: absolute;
+  left: max(-5rem, -6vw);
+  top: -4rem;
+  width: clamp(12rem, 20vw, 22rem);
+  height: auto;
+  opacity: 0.055;
+  animation: taiji-counterclockwise 54s linear infinite;
+  transform-origin: center;
+}
+
+.ink-landscape__mist {
+  position: absolute;
+  left: -5vw;
+  top: 22vh;
+  width: 110vw;
+  height: 18rem;
+  opacity: 0.22;
+  animation: ink-mist-drift 48s ease-in-out infinite;
+}
+
+.ink-landscape__mist--one {
+  filter: blur(0.3px);
+}
+
+.ink-landscape__mountains {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: auto;
+  transform-origin: center bottom;
+}
+
+.ink-landscape__mountains--far {
+  bottom: -5rem;
+  opacity: 0.055;
+  animation: ink-mountain-drift 52s ease-in-out infinite;
+}
+
+.ink-landscape__mountains--near {
+  bottom: -3rem;
+  opacity: 0.075;
+  animation: ink-near-drift 44s ease-in-out infinite;
+}
+
+.ink-landscape--workspace .ink-landscape__taiji {
+  opacity: 0.035;
+}
+
+.ink-landscape--workspace .ink-landscape__mist {
+  top: 18vh;
+  opacity: 0.12;
+}
+
+.ink-landscape--workspace .ink-landscape__mountains--far {
+  opacity: 0.032;
+}
+
+.ink-landscape--workspace .ink-landscape__mountains--near {
+  opacity: 0.04;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -58,22 +214,22 @@ details > summary::-webkit-details-marker {
 
 @layer components {
   .session-alert {
-    @apply rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 shadow-sm;
+    @apply rounded-[24px] border border-app-line bg-app-card px-4 py-3 text-sm leading-6 text-app-foreground;
   }
 
   .research-status {
-    @apply rounded-3xl border border-accent/15 bg-[linear-gradient(135deg,rgba(191,91,44,0.09),rgba(255,255,255,0.9))] p-5 shadow-[0_12px_30px_rgba(21,21,21,0.06)];
+    @apply rounded-[28px] border border-app-line bg-app-card p-5 shadow-[0_10px_28px_rgba(0,0,0,0.03)];
   }
 
 .session-empty-state {
-    @apply rounded-2xl border border-dashed border-black/10 bg-white/70 px-4 py-3 text-sm leading-6 text-ink/60;
+    @apply rounded-[24px] border border-dashed border-app-line bg-app-card px-4 py-3 text-sm leading-6 text-app-muted;
   }
 
   .surface {
-    @apply rounded-3xl border border-black/10 bg-[rgba(255,255,255,0.9)] shadow-[0_6px_18px_rgba(21,21,21,0.05)];
+    @apply rounded-[28px] border border-app-line bg-app-card shadow-[0_10px_28px_rgba(0,0,0,0.03)];
   }
 
   .surface-soft {
-    @apply rounded-3xl border border-black/[0.08] bg-[rgba(247,242,232,0.94)] shadow-[0_4px_12px_rgba(21,21,21,0.04)];
+    @apply rounded-[28px] border border-app-line bg-app-panel shadow-[0_8px_24px_rgba(0,0,0,0.025)];
   }
 }

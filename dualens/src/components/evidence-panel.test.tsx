@@ -1,9 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { EvidencePanel } from "@/components/evidence-panel";
+import type { Evidence } from "@/lib/types";
 
 const evidence = [
   {
@@ -90,5 +92,73 @@ describe("EvidencePanel", () => {
 
     expect(screen.queryByText("Rent remains elevated in the target city.")).not.toBeInTheDocument();
     expect(screen.getByText("Local salaries improved in the last year.")).toBeInTheDocument();
+  });
+
+  it("labels the evidence pool with each side's holder and keeps shared duplicates as one item", () => {
+    const sharedDuplicate = {
+      id: "e3",
+      title: "Talent migration survey",
+      url: "https://example.com/migration",
+      sourceName: "Example Survey",
+      sourceType: "survey",
+      summary: "Both sides found the same survey."
+    };
+    const pooledEvidence = [...evidence, sharedDuplicate];
+
+    render(
+      <EvidencePanel
+        evidence={pooledEvidence}
+        privateEvidence={{
+          lumina: [pooledEvidence[0], { ...sharedDuplicate, id: "lumina-copy" }],
+          vigila: [pooledEvidence[1], { ...sharedDuplicate, id: "vigila-copy" }]
+        }}
+        language="zh-CN"
+      />
+    );
+
+    expect(screen.getByRole("region", { name: "证据池" })).toBeInTheDocument();
+    const luminaHolder = screen.getByText("乾明持有");
+    const vigilaHolder = screen.getByText("坤察持有");
+    const sharedHolder = screen.getByText("共同持有");
+
+    expect(luminaHolder).toHaveClass("bg-paper");
+    expect(luminaHolder).toHaveClass("text-ink/60");
+    expect(luminaHolder).not.toHaveClass("bg-black");
+    expect(luminaHolder).not.toHaveClass("text-white");
+    expect(vigilaHolder).toHaveClass("bg-paper");
+    expect(sharedHolder).toHaveClass("bg-paper");
+    expect(screen.getAllByText("Talent migration survey")).toHaveLength(1);
+  });
+
+  it("uploads local files into the evidence pool", async () => {
+    const user = userEvent.setup();
+
+    function UploadHarness() {
+      const [items, setItems] = useState<Evidence[]>([]);
+
+      return (
+        <EvidencePanel
+          evidence={items}
+          language="zh-CN"
+          onUploadEvidence={(nextItems) =>
+            setItems((current) => [...current, ...nextItems])
+          }
+        />
+      );
+    }
+
+    render(<UploadHarness />);
+
+    await user.upload(
+      screen.getByLabelText("上传本地证据"),
+      new File(["本地证据内容说明"], "local-note.txt", { type: "text/plain" })
+    );
+
+    expect(await screen.findByText("local-note.txt")).toBeInTheDocument();
+    expect(screen.getByText("本地")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /local-note.txt/ }));
+
+    expect(screen.getByText("本地证据内容说明")).toBeInTheDocument();
   });
 });

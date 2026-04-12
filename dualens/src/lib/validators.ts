@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TEMPERAMENT_PAIRS } from "@/lib/presets";
 import type {
+  DebateMode,
   DebatePresetSelection,
   TemperamentPairId
 } from "@/lib/types";
@@ -11,8 +12,22 @@ const TEMPERAMENT_PAIR_IDS = TEMPERAMENT_PAIRS.map(
 
 const trimmedStringSchema = z.string().trim();
 const trimmedOptionalStringSchema = z.string().trim().min(1).optional();
-const builtInModelSchema = z.enum(["deepseek-chat", "deepseek-reasoner"]);
+const modelSchema = trimmedStringSchema.min(1);
+const debateModeSchema = z.enum(["shared-evidence", "private-evidence"]);
+const providerConfigSchema = z.object({
+  baseUrl: trimmedStringSchema.min(1).url(),
+  apiKey: trimmedStringSchema.min(1),
+  model: trimmedStringSchema.min(1)
+}).strict();
+const searchConfigSchema = z.object({
+  engineId: z.enum(["bing", "baidu", "google", "tavily"]),
+  apiKey: trimmedStringSchema.min(1),
+  endpoint: trimmedStringSchema.min(1).url(),
+  engineIdentifier: trimmedStringSchema.min(1).optional(),
+  extra: trimmedStringSchema.min(1).optional()
+}).strict();
 const sessionConfigSchema = z.object({
+  debateMode: debateModeSchema.optional(),
   sourceStrategy: z.enum(["credible-first", "full-web"]).optional(),
   searchDepth: z.enum(["quick", "standard", "deep"]).optional(),
   roundCount: z.number().int().positive().optional(),
@@ -51,7 +66,10 @@ export const createSessionInputSchema = z
     firstSpeaker: z.enum(["lumina", "vigila"]).default("lumina"),
     language: z.enum(["zh-CN", "en"]).default("zh-CN"),
     premise: trimmedOptionalStringSchema,
-    model: builtInModelSchema,
+    debateMode: debateModeSchema.optional().transform((value) => value as DebateMode | undefined),
+    model: modelSchema,
+    providerConfig: providerConfigSchema.optional(),
+    searchConfig: searchConfigSchema.optional(),
     config: sessionConfigSchema.optional()
   })
   .strict();

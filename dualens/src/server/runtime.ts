@@ -13,10 +13,11 @@ import { getUiCopy } from "@/lib/ui-copy";
 import { buildResearchProgressView } from "@/lib/types";
 import { createSessionInputSchema } from "@/lib/validators";
 import type {
-  BuiltInModel,
+  DebateTurnAnalysis,
   DebateTurn,
   OpenAICompatibleProviderConfig,
   ResearchProgressView,
+  SearchEngineRuntimeConfig,
   SessionDiagnosis,
   SessionDiagnosisContext,
   SessionDiagnosisStage,
@@ -51,7 +52,41 @@ type DiagnosableSession = SessionRecord & {
   stage: SessionDiagnosisStage;
 };
 
-function createResearchProvider() {
+function createUnsupportedConfiguredSearchProvider(
+  config: SearchEngineRuntimeConfig
+): ConfiguredResearchProvider {
+  const extractor = createDuckDuckGoProvider();
+
+  return {
+    async search() {
+      throw new Error(`Selected search engine "${config.engineId}" is not implemented by the runtime yet.`);
+    },
+    extract: extractor.extract,
+    diagnosticBaseUrl: config.endpoint,
+    diagnosticLabel: config.engineId
+  };
+}
+
+function createResearchProvider(searchConfig?: SearchEngineRuntimeConfig) {
+  if (searchConfig) {
+    if (searchConfig.engineId === "tavily") {
+      const tavilyProvider = createTavilyProvider({
+        apiKey: searchConfig.apiKey,
+        endpoint: searchConfig.endpoint
+      });
+      const extractor = createDuckDuckGoProvider();
+
+      return {
+        search: tavilyProvider.search,
+        extract: extractor.extract,
+        diagnosticBaseUrl: searchConfig.endpoint,
+        diagnosticLabel: "tavily"
+      } satisfies ConfiguredResearchProvider;
+    }
+
+    return createUnsupportedConfiguredSearchProvider(searchConfig);
+  }
+
   const tavilyApiKey = process.env.TAVILY_API_KEY?.trim();
   if (tavilyApiKey) {
     const tavilyProvider = createTavilyProvider({ apiKey: tavilyApiKey });
@@ -80,8 +115,8 @@ function createResearchProvider() {
   } satisfies ConfiguredResearchProvider;
 }
 
-function getResearchService() {
-  const provider = createResearchProvider();
+function getResearchService(searchConfig?: SearchEngineRuntimeConfig) {
+  const provider = createResearchProvider(searchConfig);
 
   return {
     provider,
@@ -124,7 +159,7 @@ function getProviderApiKey() {
   return apiKey;
 }
 
-function resolveDeepSeekProviderConfig(model: BuiltInModel): OpenAICompatibleProviderConfig {
+function resolveDeepSeekProviderConfig(model: string): OpenAICompatibleProviderConfig {
   return {
     baseUrl: getProviderBaseUrl(),
     apiKey: getProviderApiKey(),
@@ -180,6 +215,36 @@ function getSpeakerOrder(session: SessionRecord): readonly [SpeakerSideKey, Spea
   return firstSpeaker === "lumina" ? ["lumina", "vigila"] : ["vigila", "lumina"];
 }
 
+function getSessionDebateMode(session: SessionRecord) {
+  return session.debateMode ?? session.config.debateMode ?? "shared-evidence";
+}
+
+function getRequiredTurnCount(session: SessionRecord) {
+  return getSessionDebateMode(session) === "private-evidence"
+    ? 6
+    : session.config.roundCount * 2;
+}
+
+function getSideForTurnIndex(session: SessionRecord, index = session.turns.length): SpeakerSideKey {
+  const [firstSpeaker, secondSpeaker] = getSpeakerOrder(session);
+  return index % 2 === 0 ? firstSpeaker : secondSpeaker;
+}
+
+function getRoundForTurnIndex(index: number) {
+  return Math.floor(index / 2) + 1;
+}
+
+function getSpeakerTitle(session: SessionRecord, side: SpeakerSideKey) {
+  const [luminaTitle, vigilaTitle] = getSpeakerTitles(session);
+  return side === "lumina" ? luminaTitle : vigilaTitle;
+}
+
+function getVisibleEvidence(session: SessionRecord, side: SpeakerSideKey) {
+  return getSessionDebateMode(session) === "private-evidence"
+    ? session.privateEvidence?.[side] ?? []
+    : session.evidence;
+}
+
 function createDebateTurn(turn: Omit<DebateTurn, "id">): DebateTurn {
   return {
     id: crypto.randomUUID(),
@@ -208,17 +273,38 @@ function buildProgressFromPreviewItems(
   };
 }
 
-function getNextSpeakerTitle(session: SessionRecord) {
-  const [firstSpeaker, secondSpeaker] = getSpeakerOrder(session);
-  const [luminaTitle, vigilaTitle] = getSpeakerTitles(session);
-  const nextSpeaker = session.turns.length % 2 === 0 ? firstSpeaker : secondSpeaker;
+async function generateAnalysis(session: SessionRecord, side: SpeakerSideKey) {
+  if (session.turns.length === 0) {
+    return undefined;
+  }
 
-  return nextSpeaker === "lumina" ? luminaTitle : vigilaTitle;
+  const agent = createDebateAgent(createTurnCompletion(session));
+  return agent.createTurnAnalysis(session, side, getVisibleEvidence(session, side));
 }
 
-async function generateNextTurn(session: SessionRecord) {
+async function generateTurnForSide(
+  session: SessionRecord,
+  side: SpeakerSideKey,
+  options: {
+    analysis?: DebateTurnAnalysis;
+    privateEvidenceIds?: string[];
+  } = {}
+) {
   const agent = createDebateAgent(createTurnCompletion(session));
-  return createDebateTurn(await agent.createOpeningTurn(session, getNextSpeakerTitle(session)));
+  const turnIndex = session.turns.length;
+  const generated = await agent.createOpeningTurn(
+    session,
+    getSpeakerTitle(session, side),
+    options.analysis
+  );
+
+  return createDebateTurn({
+    ...generated,
+    side,
+    round: getRoundForTurnIndex(turnIndex),
+    ...(options.analysis ? { analysis: options.analysis } : {}),
+    ...(options.privateEvidenceIds ? { privateEvidenceIds: options.privateEvidenceIds } : {})
+  });
 }
 
 function normalizeSearchSnippet(value: string, maxLength = 240) {
@@ -267,7 +353,7 @@ function mergeEvidence(existing: SessionRecord["evidence"], incoming: SessionRec
 }
 
 async function buildDebateEvidenceWithFallback(sessionId: string, session: SessionRecord) {
-  const { service: researchService } = getResearchService();
+  const { service: researchService } = getResearchService(session.config.searchProvider);
 
   try {
     const additionalEvidence = await researchService.buildSharedEvidence(buildDebateResearchQuery(session), {
@@ -294,6 +380,21 @@ async function buildDebateEvidenceWithFallback(sessionId: string, session: Sessi
   }
 }
 
+async function buildPrivateEvidenceForSide(
+  session: SessionRecord,
+  side: SpeakerSideKey,
+  searchFocus?: string
+) {
+  const { service: researchService } = getResearchService(session.config.searchProvider);
+  const existing = session.privateEvidence?.[side] ?? [];
+  const query = searchFocus?.trim()
+    ? `Question: ${session.question}\nSearch focus: ${searchFocus}`
+    : session.question;
+  const incoming = await researchService.buildSharedEvidence(query);
+
+  return mergeEvidence(existing, incoming);
+}
+
 async function generateTurnPair(session: SessionRecord) {
   const agent = createDebateAgent(createTurnCompletion(session));
   const [firstSpeaker, secondSpeaker] = getSpeakerOrder(session);
@@ -310,13 +411,16 @@ async function generateTurnPair(session: SessionRecord) {
 }
 
 const orchestrator = createOrchestrator(store, {
-  runSharedResearch: (session) => getResearchService().service.buildSharedEvidence(session.question),
+  runSharedResearch: (session) =>
+    getResearchService(session.config.searchProvider).service.buildSharedEvidence(session.question),
   runOpeningRound: async (session) => ({
     ...session,
     turns: await generateTurnPair(session)
   }),
   runDebateRound: async (session) => {
-    const additionalEvidence = await getResearchService().service.buildSharedEvidence(buildDebateResearchQuery(session));
+    const additionalEvidence = await getResearchService(session.config.searchProvider).service.buildSharedEvidence(
+      buildDebateResearchQuery(session)
+    );
     const evidence = mergeEvidence(session.evidence, additionalEvidence);
 
     return {
@@ -334,8 +438,9 @@ function cloneSession(session: SessionRecord): SessionRecord {
 }
 
 type ClientSessionRecord = Omit<SessionRecord, "config"> & {
-  config: Omit<SessionRecord["config"], "provider"> & {
+  config: Omit<SessionRecord["config"], "provider" | "searchProvider"> & {
     provider: Omit<OpenAICompatibleProviderConfig, "apiKey">;
+    searchProvider?: Omit<SearchEngineRuntimeConfig, "apiKey">;
   };
 };
 
@@ -345,12 +450,21 @@ function redactSessionForClient(session: SessionRecord): ClientSessionRecord {
     baseUrl: cloned.config.provider.baseUrl,
     model: cloned.config.provider.model
   };
+  const searchProvider = cloned.config.searchProvider
+    ? {
+        engineId: cloned.config.searchProvider.engineId,
+        endpoint: cloned.config.searchProvider.endpoint,
+        engineIdentifier: cloned.config.searchProvider.engineIdentifier,
+        extra: cloned.config.searchProvider.extra
+      }
+    : undefined;
 
   return {
     ...cloned,
     config: {
       ...cloned.config,
-      provider
+      provider,
+      ...(searchProvider ? { searchProvider } : {})
     }
   };
 }
@@ -368,7 +482,7 @@ function getDiagnosisStep(session: SessionRecord) {
     return "run-opening-round";
   }
 
-  if (session.stage === "debate" && session.turns.length >= session.config.roundCount * 2) {
+  if (session.stage === "debate" && session.turns.length >= getRequiredTurnCount(session)) {
     return "run-summary";
   }
 
@@ -377,7 +491,7 @@ function getDiagnosisStep(session: SessionRecord) {
 
 function getDiagnosisContext(session: DiagnosableSession): SessionDiagnosisContext {
   if (session.stage === "research") {
-    const { provider } = getResearchService();
+    const { provider } = getResearchService(session.config.searchProvider);
 
     return {
       stage: session.stage,
@@ -493,9 +607,20 @@ function getSessionOrThrow(sessionId: string) {
 
 async function advanceSessionStep(sessionId: string) {
   const session = getSessionOrThrow(sessionId);
-  const { service: researchService } = getResearchService();
+  const { service: researchService } = getResearchService(session.config.searchProvider);
+  const debateMode = getSessionDebateMode(session);
 
   if (session.stage === "research") {
+    if (debateMode === "private-evidence") {
+      return store.save({
+        ...cloneSession(session),
+        privateEvidence: session.privateEvidence ?? {},
+        stage: "opening",
+        researchProgress: buildResearchProgressView([]),
+        diagnosis: undefined
+      });
+    }
+
     let previewItems: ResearchProgressView["previewItems"] = [];
     store.save({
       ...cloneSession(session),
@@ -554,19 +679,69 @@ async function advanceSessionStep(sessionId: string) {
   }
 
   if (session.stage === "opening") {
-    const nextTurn = await generateNextTurn(session);
+    const side = getSideForTurnIndex(session);
+    const analysis = await generateAnalysis(session, side);
+
+    if (debateMode === "private-evidence") {
+      const currentPrivateEvidence = session.privateEvidence ?? {};
+      let sideEvidence = currentPrivateEvidence[side] ?? [];
+
+      try {
+        sideEvidence = await buildPrivateEvidenceForSide(session, side, analysis?.searchFocus);
+      } catch {
+        sideEvidence = currentPrivateEvidence[side] ?? [];
+      }
+
+      const privateEvidence = {
+        ...currentPrivateEvidence,
+        [side]: sideEvidence
+      };
+      const evidence = mergeEvidence(session.evidence, sideEvidence);
+      const nextTurn = await generateTurnForSide(
+        {
+          ...session,
+          evidence: sideEvidence,
+          privateEvidence
+        },
+        side,
+        {
+          analysis,
+          privateEvidenceIds: sideEvidence.map((item) => item.id)
+        }
+      );
+      const nextTurns = [...session.turns, nextTurn];
+
+      return store.save({
+        ...cloneSession(session),
+        evidence,
+        privateEvidence,
+        turns: nextTurns,
+        stage: nextTurns.length >= 2 ? "debate" : "opening",
+        researchProgress: buildResearchProgressView(evidence),
+        diagnosis: undefined
+      });
+    }
+
+    const evidence = session.turns.length > 0
+      ? await buildDebateEvidenceWithFallback(sessionId, session)
+      : session.evidence;
+    const nextTurn = await generateTurnForSide({ ...session, evidence }, side, { analysis });
     const nextTurns = [...session.turns, nextTurn];
 
     return store.save({
       ...cloneSession(session),
+      evidence,
       turns: nextTurns,
       stage: nextTurns.length >= 2 ? "debate" : "opening",
+      researchProgress: buildResearchProgressView(evidence),
       diagnosis: undefined
     });
   }
 
   if (session.stage === "debate") {
-    if (session.turns.length >= session.config.roundCount * 2) {
+    const requiredTurnCount = getRequiredTurnCount(session);
+
+    if (session.turns.length >= requiredTurnCount) {
       const summary = await createSummaryService(createSummaryCompletion(session)).generate(session);
       return store.save({
         ...cloneSession(session),
@@ -576,8 +751,50 @@ async function advanceSessionStep(sessionId: string) {
       });
     }
 
+    const side = getSideForTurnIndex(session);
+    const analysis = await generateAnalysis(session, side);
+
+    if (debateMode === "private-evidence") {
+      const currentPrivateEvidence = session.privateEvidence ?? {};
+      let sideEvidence = currentPrivateEvidence[side] ?? [];
+
+      try {
+        sideEvidence = await buildPrivateEvidenceForSide(session, side, analysis?.searchFocus);
+      } catch {
+        sideEvidence = currentPrivateEvidence[side] ?? [];
+      }
+
+      const privateEvidence = {
+        ...currentPrivateEvidence,
+        [side]: sideEvidence
+      };
+      const evidence = mergeEvidence(session.evidence, sideEvidence);
+      const nextTurn = await generateTurnForSide(
+        {
+          ...session,
+          evidence: sideEvidence,
+          privateEvidence
+        },
+        side,
+        {
+          analysis,
+          privateEvidenceIds: sideEvidence.map((item) => item.id)
+        }
+      );
+      const nextTurns = [...session.turns, nextTurn];
+
+      return store.save({
+        ...cloneSession(session),
+        evidence,
+        privateEvidence,
+        turns: nextTurns,
+        researchProgress: buildResearchProgressView(evidence),
+        diagnosis: undefined
+      });
+    }
+
     const evidence = await buildDebateEvidenceWithFallback(sessionId, session);
-    const nextTurn = await generateNextTurn({ ...session, evidence });
+    const nextTurn = await generateTurnForSide({ ...session, evidence }, side, { analysis });
     const nextTurns = [...session.turns, nextTurn];
 
     return store.save({
@@ -624,7 +841,7 @@ function startSessionRunner(sessionId: string) {
 export const runtime = {
   async createSession(input: unknown) {
     const parsed = createSessionInputSchema.parse(input);
-    const provider = resolveDeepSeekProviderConfig(parsed.model);
+    const provider = parsed.providerConfig ?? resolveDeepSeekProviderConfig(parsed.model);
 
     const session = await orchestrator.createSession({
       question: parsed.question,
@@ -634,7 +851,9 @@ export const runtime = {
       premise: parsed.premise,
       config: {
         ...parsed.config,
-        provider
+        ...(parsed.debateMode ? { debateMode: parsed.debateMode } : {}),
+        provider,
+        ...(parsed.searchConfig ? { searchProvider: parsed.searchConfig } : {})
       }
     });
 
@@ -644,7 +863,8 @@ export const runtime = {
       ...session,
       config: {
         ...session.config,
-        provider
+        provider,
+        ...(parsed.searchConfig ? { searchProvider: parsed.searchConfig } : {})
       }
     });
   },

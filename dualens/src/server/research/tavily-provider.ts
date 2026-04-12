@@ -2,6 +2,7 @@ import type { SearchProvider, SearchResult } from "@/server/research/search-prov
 
 type TavilyProviderOptions = {
   apiKey: string;
+  endpoint?: string;
   fetch?: typeof fetch;
 };
 
@@ -48,10 +49,11 @@ export function mapTavilyResults(payload: TavilyResponse): SearchResult[] {
 
 export function createTavilyProvider(options: TavilyProviderOptions): SearchProvider {
   const fetchImpl = options.fetch ?? fetch;
+  const searchUrl = options.endpoint ?? TAVILY_SEARCH_URL;
 
   return {
     async search(query: string) {
-      const response = await fetchImpl(TAVILY_SEARCH_URL, {
+      const response = await fetchImpl(searchUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

@@ -1,8 +1,5 @@
-"use client";
-
-import { SessionShell } from "@/components/session-shell";
-import { createSession } from "@/app/session-client";
+import { ProductEntryPage } from "@/components/product-entry-page";
 
 export default function HomePage() {
-  return <SessionShell createSession={createSession} />;
+  return <ProductEntryPage />;
 }

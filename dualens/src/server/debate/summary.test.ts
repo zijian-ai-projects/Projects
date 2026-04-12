@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createSummaryService } from "@/server/debate/summary";
 import { createOpenAICompatibleProvider } from "@/server/llm/openai-compatible-provider";
 import { buildOpeningPrompt, buildSummaryPrompt } from "@/server/prompts";
@@ -141,5 +141,36 @@ describe("summary service", () => {
 
     await expect(provider.complete([{ role: "user", content: "hello" }], "DebateSummary")).rejects
       .toThrow("missing message content");
+  });
+
+  it("times out hanging chat completion requests", async () => {
+    vi.useFakeTimers();
+    try {
+      const provider = createOpenAICompatibleProvider<{
+        coreDisagreement: string;
+      }>({
+        baseUrl: "https://example.com/v1",
+        apiKey: "test-key",
+        model: "gpt-4o-mini",
+        requestTimeoutMs: 10,
+        fetch: async (_url, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+            });
+          })
+      });
+
+      const completion = provider.complete([{ role: "user", content: "hello" }], "DebateSummary");
+      const handledCompletion = completion.catch((error) => error as Error);
+      await vi.advanceTimersByTimeAsync(11);
+      const error = await handledCompletion;
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toMatchObject({ name: "AbortError" });
+      expect(error.message).toContain("timed out");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -74,6 +74,58 @@ describe("POST /api/session", () => {
     expect(payload.firstSpeaker).toBe("vigila");
   });
 
+  it("accepts a valid debate mode in session config", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            config: { debateMode: "private-evidence" }
+          })
+        )
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.debateMode).toBe("private-evidence");
+  });
+
+  it("accepts the front-end debate mode payload at the top level", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            debateMode: "private-evidence"
+          })
+        )
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.debateMode).toBe("private-evidence");
+    expect(payload.config.debateMode).toBe("private-evidence");
+  });
+
+  it("rejects an invalid debate mode in session config", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            config: { debateMode: "invented-mode" }
+          })
+        )
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 400 for an invalid create payload", async () => {
     const response = await POST(
       new Request("http://localhost/api/session", {
@@ -112,6 +164,36 @@ describe("POST /api/session", () => {
 
     expect(response.status).toBe(400);
     expect(payload.error).toBeDefined();
+  });
+
+  it("accepts a selected provider config and never returns its API key", async () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", undefined);
+    vi.stubEnv("OPENAI_API_KEY", undefined);
+    vi.stubEnv("api_key", undefined);
+
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            model: "gpt-4.1",
+            providerConfig: {
+              baseUrl: "https://api.openai.com/v1",
+              apiKey: "client-openai-key",
+              model: "gpt-4.1"
+            }
+          })
+        )
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.config.provider).toEqual({
+      baseUrl: "https://api.openai.com/v1",
+      model: "gpt-4.1"
+    });
   });
 
   it("rejects legacy provider fields at the client boundary", async () => {

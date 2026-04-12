@@ -1,21 +1,48 @@
-import type { SessionRecord } from "@/lib/types";
-import { buildOpeningPrompt } from "@/server/prompts";
-import type { StructuredCompletion } from "@/server/llm/provider";
+import type { DebateTurnAnalysis, Evidence, SessionRecord, SpeakerSideKey } from "@/lib/types";
+import { buildOpeningPrompt, buildTurnAnalysisPrompt } from "@/server/prompts";
+import type { ChatMessage } from "@/server/llm/provider";
 
-export function createDebateAgent(
-  llm: StructuredCompletion<{ speaker: string; content: string; referencedEvidenceIds: string[] }>
-) {
+type DebateTurnCompletion = {
+  speaker: string;
+  content: string;
+  referencedEvidenceIds: string[];
+};
+
+type DebateAgentCompletion = {
+  complete(messages: ChatMessage[], schemaName: string): Promise<unknown>;
+};
+
+export function createDebateAgent(llm: DebateAgentCompletion) {
   return {
-    async createOpeningTurn(session: SessionRecord, speaker: string) {
+    async createOpeningTurn(
+      session: SessionRecord,
+      speaker: string,
+      analysis?: DebateTurnAnalysis
+    ) {
       return llm.complete(
         [
           {
             role: "user",
-            content: `${buildOpeningPrompt(session)}\nSpeaker: ${speaker}`
+            content: `${buildOpeningPrompt(session, analysis)}\nSpeaker: ${speaker}`
           }
         ],
         "DebateTurn"
-      );
+      ) as Promise<DebateTurnCompletion>;
+    },
+    async createTurnAnalysis(
+      session: SessionRecord,
+      side: SpeakerSideKey,
+      visibleEvidence: Evidence[]
+    ) {
+      return llm.complete(
+        [
+          {
+            role: "user",
+            content: buildTurnAnalysisPrompt(session, side, visibleEvidence)
+          }
+        ],
+        "DebateTurnAnalysis"
+      ) as Promise<DebateTurnAnalysis>;
     }
   };
 }

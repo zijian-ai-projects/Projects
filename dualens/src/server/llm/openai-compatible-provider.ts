@@ -3,6 +3,7 @@ import type { ChatMessage, StructuredCompletion } from "@/server/llm/provider";
 
 type OpenAICompatibleProviderRuntimeConfig = OpenAICompatibleProviderConfig & {
   fetch?: typeof fetch;
+  requestTimeoutMs?: number;
 };
 
 type ChatCompletionResponse = {
@@ -12,6 +13,17 @@ type ChatCompletionResponse = {
     };
   }>;
 };
+
+const DEFAULT_REQUEST_TIMEOUT_MS = 45_000;
+
+function createTimeoutError(timeoutMs: number, cause: unknown) {
+  const error = new Error(`OpenAI-compatible request timed out after ${timeoutMs}ms`, {
+    cause
+  });
+  error.name = "AbortError";
+
+  return error;
+}
 
 function parseStructuredContent<T>(content: string, schemaName: string): T {
   const trimmed = content.trim();
@@ -45,7 +57,8 @@ export function createOpenAICompatibleProvider<T>({
   baseUrl,
   apiKey,
   model,
-  fetch: fetchImpl = fetch
+  fetch: fetchImpl = fetch,
+  requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
 }: OpenAICompatibleProviderRuntimeConfig): StructuredCompletion<T> {
   const chatCompletionsUrl = baseUrl.endsWith("/")
     ? `${baseUrl}chat/completions`
@@ -53,19 +66,38 @@ export function createOpenAICompatibleProvider<T>({
 
   return {
     async complete(messages: ChatMessage[], schemaName: string) {
-      const response = await fetchImpl(chatCompletionsUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          response_format: { type: "json_object" },
-          metadata: { schemaName }
-        })
-      });
+      const timeoutController = new AbortController();
+      const timeoutId = requestTimeoutMs > 0
+        ? setTimeout(() => timeoutController.abort(), requestTimeoutMs)
+        : undefined;
+      let response: Response;
+
+      try {
+        response = await fetchImpl(chatCompletionsUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          signal: timeoutController.signal,
+          body: JSON.stringify({
+            model,
+            messages,
+            response_format: { type: "json_object" },
+            metadata: { schemaName }
+          })
+        });
+      } catch (error) {
+        if (timeoutController.signal.aborted) {
+          throw createTimeoutError(requestTimeoutMs, error);
+        }
+
+        throw error;
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`OpenAI-compatible request failed with status ${response.status}`, {

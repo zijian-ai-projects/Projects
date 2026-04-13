@@ -84,6 +84,7 @@ function supportsHistoryFolderAccess() {
   return (
     typeof window !== "undefined" &&
     typeof window.indexedDB !== "undefined" &&
+    (!("isSecureContext" in window) || window.isSecureContext) &&
     typeof (window as DirectoryPickerWindow).showDirectoryPicker === "function"
   );
 }

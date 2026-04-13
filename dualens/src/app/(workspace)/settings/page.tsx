@@ -25,9 +25,14 @@ export default function SettingsPage() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const copy = getWorkspaceCopy(language);
   const settingsCopy = copy.settings;
-  const currentFolderLabel = folderState.folderName ?? settingsCopy.unselected;
+  const isFolderUnsupported = folderState.status === "unsupported";
+  const currentFolderLabel = isFolderUnsupported
+    ? settingsCopy.unsupported
+    : folderState.folderName ?? settingsCopy.unselected;
   const buttonLabel =
-    folderState.status === "unselected" ? settingsCopy.chooseFolder : settingsCopy.reselectFolder;
+    folderState.status === "authorized" || folderState.status === "needs-permission"
+      ? settingsCopy.reselectFolder
+      : settingsCopy.chooseFolder;
   const currentLanguageLabel = language === "zh-CN" ? settingsCopy.chinese : settingsCopy.english;
   const canClearFolder = Boolean(folderState.folderName);
 
@@ -158,6 +163,9 @@ export default function SettingsPage() {
 
           {feedback ? (
             <p className="text-sm leading-6 text-app-strong">{feedback}</p>
+          ) : null}
+          {isFolderUnsupported ? (
+            <p className="text-sm leading-6 text-app-muted">{settingsCopy.unsupportedMessage}</p>
           ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">

@@ -143,6 +143,25 @@ describe("POST /api/session", () => {
     expect(payload.error).toBeDefined();
   });
 
+  it("accepts the five-character Chinese question allowed by the form", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            question: "是否要创业",
+            language: "zh-CN"
+          })
+        )
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.stage).toBe("research");
+  });
+
   it("rejects provider config fields at the client boundary", async () => {
     const response = await POST(
       new Request("http://localhost/api/session", {

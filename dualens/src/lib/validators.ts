@@ -10,6 +10,8 @@ const TEMPERAMENT_PAIR_IDS = TEMPERAMENT_PAIRS.map(
   (pair) => pair.id
 ) as [TemperamentPairId, ...TemperamentPairId[]];
 
+const MIN_CHINESE_QUESTION_LENGTH = 5;
+const MIN_ENGLISH_QUESTION_LENGTH = 10;
 const trimmedStringSchema = z.string().trim();
 const trimmedOptionalStringSchema = z.string().trim().min(1).optional();
 const modelSchema = trimmedStringSchema.min(1);
@@ -61,7 +63,7 @@ const presetSelectionSchema = z
 
 export const createSessionInputSchema = z
   .object({
-    question: trimmedStringSchema.min(10),
+    question: trimmedStringSchema.min(1),
     presetSelection: presetSelectionSchema,
     firstSpeaker: z.enum(["lumina", "vigila"]).default("lumina"),
     language: z.enum(["zh-CN", "en"]).default("zh-CN"),
@@ -72,4 +74,19 @@ export const createSessionInputSchema = z
     searchConfig: searchConfigSchema.optional(),
     config: sessionConfigSchema.optional()
   })
-  .strict();
+  .strict()
+  .superRefine((input, ctx) => {
+    const minimumQuestionLength =
+      input.language === "en" ? MIN_ENGLISH_QUESTION_LENGTH : MIN_CHINESE_QUESTION_LENGTH;
+
+    if (input.question.length < minimumQuestionLength) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_small,
+        minimum: minimumQuestionLength,
+        type: "string",
+        inclusive: true,
+        path: ["question"],
+        message: `Question must contain at least ${minimumQuestionLength} characters`
+      });
+    }
+  });

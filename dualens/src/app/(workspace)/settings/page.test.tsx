@@ -110,10 +110,10 @@ describe("SettingsPage", () => {
 
     renderSettingsPage();
 
-    expect(await screen.findByRole("button", { name: "重新选择" })).toBeDisabled();
-    expect(screen.queryByText("当前浏览器不支持")).not.toBeInTheDocument();
-    expect(screen.queryByText("当前浏览器不支持目录访问 API，无法选择本地文件夹。")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "重新选择" })).toBeDisabled();
+    expect(await screen.findByText("当前浏览器不支持")).toBeInTheDocument();
+    expect(screen.getByText("当前浏览器不支持目录访问 API，公网 HTTP 地址无法选择本地文件夹。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "选择文件夹" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "重新选择" })).not.toBeInTheDocument();
   });
 
   it("clears the saved history folder from the settings card", async () => {

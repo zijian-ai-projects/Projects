@@ -83,7 +83,7 @@ export const WORKSPACE_COPY = {
       clearFolder: "Clear saved folder",
       processing: "Processing...",
       unsupportedMessage:
-        "This browser does not support directory access, so local folder selection is unavailable.",
+        "This browser does not support directory access. Public HTTP addresses cannot select a local folder.",
       permissionMessage:
         "If permission expires, choose the same folder again or switch to a new save location.",
       feedback: "Folder authorization was not updated; the existing setting is still kept."
@@ -267,7 +267,7 @@ export const WORKSPACE_COPY = {
       clearFolder: "清除保存目录",
       processing: "处理中...",
       unsupportedMessage:
-        "当前浏览器不支持目录访问 API，无法选择本地文件夹。",
+        "当前浏览器不支持目录访问 API，公网 HTTP 地址无法选择本地文件夹。",
       permissionMessage:
         "如果目录权限失效，可以重新选择同一目录或切换到新的保存位置。",
       feedback: "目录授权未更新，当前仍保留原有设置。"

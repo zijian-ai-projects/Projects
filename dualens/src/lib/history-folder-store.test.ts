@@ -13,6 +13,7 @@ type DirectoryPickerWindow = Window &
   };
 
 const indexedDbDescriptor = Object.getOwnPropertyDescriptor(window, "indexedDB");
+const isSecureContextDescriptor = Object.getOwnPropertyDescriptor(window, "isSecureContext");
 
 function mockIndexedDbOpenFailure() {
   const error = new DOMException("blocked");
@@ -103,6 +104,12 @@ describe("history-folder store helpers", () => {
     } else {
       delete (window as Window & typeof globalThis & { indexedDB?: IDBFactory }).indexedDB;
     }
+
+    if (isSecureContextDescriptor) {
+      Object.defineProperty(window, "isSecureContext", isSecureContextDescriptor);
+    } else {
+      delete (window as Window & typeof globalThis & { isSecureContext?: boolean }).isSecureContext;
+    }
   });
 
   it("maps granted permission to the authorized UI state", () => {
@@ -115,6 +122,19 @@ describe("history-folder store helpers", () => {
 
   it("maps missing directory support to the unsupported UI state", () => {
     expect(formatHistoryFolderState({ supported: false })).toEqual({
+      status: "unsupported",
+      folderName: null
+    });
+  });
+
+  it("treats insecure contexts as unsupported for directory access", async () => {
+    Object.defineProperty(window, "isSecureContext", {
+      configurable: true,
+      value: false
+    });
+    (window as DirectoryPickerWindow).showDirectoryPicker = vi.fn();
+
+    await expect(loadHistoryFolderState()).resolves.toEqual({
       status: "unsupported",
       folderName: null
     });

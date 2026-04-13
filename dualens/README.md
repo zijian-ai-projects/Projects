@@ -10,6 +10,10 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38bdf8)
 ![Vitest](https://img.shields.io/badge/Tested_with-Vitest-729b1b)
 
+## 在线访问
+
+项目地址：[http://39.106.113.67:3000/](http://39.106.113.67:3000/)
+
 ## 产品定位
 
 复杂决策通常不是缺一个答案，而是缺一个能同时看见支持、反对、证据和不确定性的判断空间。

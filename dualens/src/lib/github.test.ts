@@ -35,6 +35,25 @@ describe("github repository config", () => {
     });
   });
 
+  it("reads repository config from a provided environment source", () => {
+    vi.stubEnv("NEXT_PUBLIC_GITHUB_OWNER", undefined);
+    vi.stubEnv("NEXT_PUBLIC_GITHUB_REPO", undefined);
+    vi.stubEnv("NEXT_PUBLIC_GITHUB_REPO_URL", undefined);
+
+    expect(
+      getGitHubRepositoryConfig({
+        NEXT_PUBLIC_GITHUB_OWNER: "client-owner",
+        NEXT_PUBLIC_GITHUB_REPO: "client-repo",
+        NEXT_PUBLIC_GITHUB_REPO_URL: "https://github.com/client-owner/client-repo"
+      })
+    ).toEqual({
+      configured: true,
+      owner: "client-owner",
+      repo: "client-repo",
+      repoUrl: "https://github.com/client-owner/client-repo"
+    });
+  });
+
   it("does not infer a repository url when repoUrl is omitted", () => {
     vi.stubEnv("NEXT_PUBLIC_GITHUB_OWNER", "example-owner");
     vi.stubEnv("NEXT_PUBLIC_GITHUB_REPO", "example-repo");

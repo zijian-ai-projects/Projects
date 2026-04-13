@@ -16,15 +16,38 @@ export type GitHubRepositoryPayload = {
   stargazers_count: number;
 };
 
-function readEnvValue(name: string) {
-  const value = process.env[name];
+type GitHubRepositoryEnvKey =
+  | "NEXT_PUBLIC_GITHUB_OWNER"
+  | "NEXT_PUBLIC_GITHUB_REPO"
+  | "NEXT_PUBLIC_GITHUB_REPO_URL"
+  | "GITHUB_OWNER"
+  | "GITHUB_REPO"
+  | "GITHUB_REPO_URL";
+
+type GitHubRepositoryEnv = Partial<Record<GitHubRepositoryEnvKey, string | undefined>>;
+
+function readGitHubRepositoryEnv(): GitHubRepositoryEnv {
+  return {
+    NEXT_PUBLIC_GITHUB_OWNER: process.env.NEXT_PUBLIC_GITHUB_OWNER,
+    NEXT_PUBLIC_GITHUB_REPO: process.env.NEXT_PUBLIC_GITHUB_REPO,
+    NEXT_PUBLIC_GITHUB_REPO_URL: process.env.NEXT_PUBLIC_GITHUB_REPO_URL,
+    GITHUB_OWNER: process.env.GITHUB_OWNER,
+    GITHUB_REPO: process.env.GITHUB_REPO,
+    GITHUB_REPO_URL: process.env.GITHUB_REPO_URL
+  };
+}
+
+function readEnvValue(env: GitHubRepositoryEnv, name: GitHubRepositoryEnvKey) {
+  const value = env[name];
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-export function getGitHubRepositoryConfig(): GitHubRepositoryConfig {
-  const owner = readEnvValue("NEXT_PUBLIC_GITHUB_OWNER") ?? readEnvValue("GITHUB_OWNER");
-  const repo = readEnvValue("NEXT_PUBLIC_GITHUB_REPO") ?? readEnvValue("GITHUB_REPO");
-  const repoUrl = readEnvValue("NEXT_PUBLIC_GITHUB_REPO_URL") ?? readEnvValue("GITHUB_REPO_URL");
+export function getGitHubRepositoryConfig(
+  env: GitHubRepositoryEnv = readGitHubRepositoryEnv()
+): GitHubRepositoryConfig {
+  const owner = readEnvValue(env, "NEXT_PUBLIC_GITHUB_OWNER") ?? readEnvValue(env, "GITHUB_OWNER");
+  const repo = readEnvValue(env, "NEXT_PUBLIC_GITHUB_REPO") ?? readEnvValue(env, "GITHUB_REPO");
+  const repoUrl = readEnvValue(env, "NEXT_PUBLIC_GITHUB_REPO_URL") ?? readEnvValue(env, "GITHUB_REPO_URL");
 
   if (!owner || !repo || !repoUrl) {
     return {

@@ -4,36 +4,36 @@
 
 :root {
   color-scheme: light;
-  --color-app: 243 243 241;
-  --color-app-panel: 251 251 250;
+  --color-app: 255 255 255;
+  --color-app-panel: 255 255 255;
   --color-app-card: 255 255 255;
-  --color-app-soft: 236 236 232;
-  --color-app-foreground: 22 22 22;
-  --color-app-muted: 103 103 98;
-  --color-app-line: 219 219 215;
-  --color-app-strong: 17 17 17;
+  --color-app-soft: 246 246 246;
+  --color-app-foreground: 24 24 24;
+  --color-app-muted: 92 92 92;
+  --color-app-line: 222 222 222;
+  --color-app-strong: 0 0 0;
   --color-app-inverse: 255 255 255;
-  --color-app-focus: 17 17 17;
-  --color-ink-landscape: 17 17 17;
-  --shadow-soft: rgba(0, 0, 0, 0.055);
+  --color-app-focus: 0 0 0;
+  --color-ink-landscape: 0 0 0;
+  --shadow-soft: rgba(0, 0, 0, 0.06);
   --shadow-strong: rgba(0, 0, 0, 0.22);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-app: 17 17 16;
-  --color-app-panel: 25 25 23;
-  --color-app-card: 31 31 28;
-  --color-app-soft: 40 40 36;
-  --color-app-foreground: 235 235 228;
-  --color-app-muted: 166 166 154;
-  --color-app-line: 62 62 55;
-  --color-app-strong: 245 245 238;
-  --color-app-inverse: 17 17 16;
-  --color-app-focus: 230 230 220;
-  --color-ink-landscape: 245 245 238;
-  --shadow-soft: rgba(0, 0, 0, 0.28);
-  --shadow-strong: rgba(0, 0, 0, 0.46);
+  --color-app: 18 18 18;
+  --color-app-panel: 24 24 24;
+  --color-app-card: 30 30 30;
+  --color-app-soft: 42 42 42;
+  --color-app-foreground: 238 238 238;
+  --color-app-muted: 168 168 168;
+  --color-app-line: 66 66 66;
+  --color-app-strong: 250 250 250;
+  --color-app-inverse: 18 18 18;
+  --color-app-focus: 230 230 230;
+  --color-ink-landscape: 255 255 255;
+  --shadow-soft: rgba(0, 0, 0, 0.31);
+  --shadow-strong: rgba(0, 0, 0, 0.52);
 }
 
 html {
@@ -77,120 +77,99 @@ body {
   transform-origin: center;
 }
 
-@keyframes ink-mountain-drift {
-  0%,
-  100% {
-    transform: translate3d(-1rem, 0, 0) scale(1);
-    opacity: 0.78;
+@keyframes shan-shui-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
   }
 
-  50% {
-    transform: translate3d(1.2rem, -0.8rem, 0) scale(1.02);
-    opacity: 0.92;
-  }
-}
-
-.animate-ink-mountain-drift {
-  animation: ink-mountain-drift 38s ease-in-out infinite;
-  transform-origin: center bottom;
-}
-
-@keyframes ink-mist-drift {
-  0%,
-  100% {
-    transform: translate3d(-2rem, 0, 0) scale(1);
-    opacity: 0.34;
-  }
-
-  50% {
-    transform: translate3d(2rem, -0.7rem, 0) scale(1.02);
-    opacity: 0.48;
-  }
-}
-
-@keyframes ink-near-drift {
-  0%,
-  100% {
-    transform: translate3d(-1rem, 0, 0);
-  }
-
-  50% {
-    transform: translate3d(1rem, -0.5rem, 0);
+  to {
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .ink-landscape {
   color: rgb(var(--color-ink-landscape));
+  contain: layout paint;
+  isolation: isolate;
+  --shan-shui-landscape-opacity: 0.88;
+  --shan-shui-scroll-duration: 190s;
+  --ink-reading-reserve-opacity: 0.76;
+  --ink-preview-reserve-opacity: 0.78;
+  --ink-workspace-veil-opacity: 0;
+  --ink-workspace-quiet-opacity: 0.08;
 }
 
 .ink-landscape--home {
-  opacity: 1;
+  --shan-shui-landscape-opacity: 0.9;
+  --shan-shui-scroll-duration: 190s;
 }
 
 .ink-landscape--workspace {
-  opacity: 0.56;
+  --shan-shui-landscape-opacity: 0.58;
+  --shan-shui-scroll-duration: 280s;
+  --ink-reading-reserve-opacity: 0.82;
+  --ink-preview-reserve-opacity: 0;
+  --ink-workspace-veil-opacity: 0.36;
+  --ink-workspace-quiet-opacity: 0.56;
 }
 
-.ink-landscape__taiji {
+.ink-landscape__paper,
+.ink-landscape__scroll-track,
+.ink-landscape__reading-reserve,
+.ink-landscape__preview-reserve,
+.ink-landscape__workspace-veil,
+.ink-landscape__workspace-quiet-zone {
   position: absolute;
-  left: max(-5rem, -6vw);
-  top: -4rem;
-  width: clamp(12rem, 20vw, 22rem);
-  height: auto;
-  opacity: 0.055;
-  animation: taiji-counterclockwise 54s linear infinite;
-  transform-origin: center;
+  inset: 0;
 }
 
-.ink-landscape__mist {
-  position: absolute;
-  left: -5vw;
-  top: 22vh;
-  width: 110vw;
-  height: 18rem;
-  opacity: 0.22;
-  animation: ink-mist-drift 48s ease-in-out infinite;
+.ink-landscape__paper {
+  background: rgb(var(--color-app));
 }
 
-.ink-landscape__mist--one {
-  filter: blur(0.3px);
+.ink-landscape__scroll-track {
+  width: 200%;
+  height: 100%;
+  opacity: var(--shan-shui-landscape-opacity);
+  animation: shan-shui-scroll var(--shan-shui-scroll-duration) linear infinite;
+  will-change: transform;
 }
 
-.ink-landscape__mountains {
-  position: absolute;
-  left: 0;
+.ink-landscape__strip {
   width: 100%;
-  height: auto;
-  transform-origin: center bottom;
+  height: 100%;
+  color: rgb(var(--color-ink-landscape));
 }
 
-.ink-landscape__mountains--far {
-  bottom: -5rem;
-  opacity: 0.055;
-  animation: ink-mountain-drift 52s ease-in-out infinite;
+.ink-landscape__reading-reserve {
+  z-index: 1;
+  opacity: var(--ink-reading-reserve-opacity);
+  background:
+    radial-gradient(ellipse at 30% 38%, rgb(var(--color-app) / 1) 0 20%, rgb(var(--color-app) / 0.86) 39%, transparent 66%),
+    linear-gradient(180deg, rgb(var(--color-app) / 0.76) 0 8%, transparent 30%, transparent 72%, rgb(var(--color-app) / 0.44) 100%);
 }
 
-.ink-landscape__mountains--near {
-  bottom: -3rem;
-  opacity: 0.075;
-  animation: ink-near-drift 44s ease-in-out infinite;
+.ink-landscape__preview-reserve {
+  z-index: 2;
+  opacity: var(--ink-preview-reserve-opacity);
+  background:
+    radial-gradient(ellipse at 76% 38%, rgb(var(--color-app) / 1) 0 17%, rgb(var(--color-app) / 0.82) 36%, transparent 62%);
 }
 
-.ink-landscape--workspace .ink-landscape__taiji {
-  opacity: 0.035;
+.ink-landscape__workspace-veil {
+  z-index: 3;
+  opacity: var(--ink-workspace-veil-opacity);
+  background:
+    radial-gradient(ellipse at 55% 38%, rgb(var(--color-app) / 1) 0 24%, rgb(var(--color-app) / 0.74) 47%, transparent 72%),
+    linear-gradient(90deg, rgb(var(--color-app) / 0.5), rgb(var(--color-app) / 0.26) 22%, transparent 40%, transparent 78%, rgb(var(--color-app) / 0.2));
 }
 
-.ink-landscape--workspace .ink-landscape__mist {
-  top: 18vh;
-  opacity: 0.12;
-}
-
-.ink-landscape--workspace .ink-landscape__mountains--far {
-  opacity: 0.032;
-}
-
-.ink-landscape--workspace .ink-landscape__mountains--near {
-  opacity: 0.04;
+.ink-landscape__workspace-quiet-zone {
+  z-index: 4;
+  opacity: var(--ink-workspace-quiet-opacity);
+  background:
+    linear-gradient(180deg, rgb(var(--color-app) / 0.98) 0 12%, rgb(var(--color-app) / 0.52) 31%, transparent 58%),
+    radial-gradient(ellipse at 54% 55%, rgb(var(--color-app) / 1) 0 22%, rgb(var(--color-app) / 0.62) 43%, transparent 68%);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -201,6 +180,11 @@ body {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .shan-shui-scroll {
+    animation: none !important;
+    transform: translate3d(0, 0, 0) !important;
   }
 }
 
@@ -221,7 +205,7 @@ details > summary::-webkit-details-marker {
     @apply rounded-[28px] border border-app-line bg-app-card p-5 shadow-[0_10px_28px_rgba(0,0,0,0.03)];
   }
 
-.session-empty-state {
+  .session-empty-state {
     @apply rounded-[24px] border border-dashed border-app-line bg-app-card px-4 py-3 text-sm leading-6 text-app-muted;
   }
 

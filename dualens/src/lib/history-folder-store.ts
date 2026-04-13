@@ -166,6 +166,26 @@ async function saveHandleToIndexedDb(handle: FileSystemDirectoryHandle) {
   });
 }
 
+async function deleteSavedHandleFromIndexedDb() {
+  const db = await openHistoryDb();
+
+  await new Promise<void>((resolve, reject) => {
+    const request = db
+      .transaction(STORE_NAME, "readwrite")
+      .objectStore(STORE_NAME)
+      .delete(HANDLE_KEY);
+
+    request.onsuccess = () => {
+      db.close();
+      resolve();
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
 export async function loadHistoryFolderState(): Promise<HistoryFolderState> {
   if (!supportsHistoryFolderAccess()) {
     return formatHistoryFolderState({ supported: false });
@@ -230,5 +250,18 @@ export async function chooseHistoryFolder(): Promise<HistoryFolderState> {
     supported: true,
     handle,
     permission
+  });
+}
+
+export async function clearHistoryFolder(): Promise<HistoryFolderState> {
+  if (!supportsHistoryFolderAccess()) {
+    return formatHistoryFolderState({ supported: false });
+  }
+
+  await deleteSavedHandleFromIndexedDb();
+
+  return formatHistoryFolderState({
+    supported: true,
+    handle: null
   });
 }

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { InkLandscapeBackground } from "@/components/background/ink-landscape-background";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useAppPreferences } from "@/lib/app-preferences";
 import { DebateQuestionDraftProvider } from "@/lib/debate-question-draft";
@@ -24,11 +25,12 @@ function WorkspaceFrame({ children }: { children: ReactNode }) {
   const copy = getWorkspaceCopy(language);
 
   return (
-    <div className="relative min-h-screen bg-app text-app-foreground">
+    <div className="relative isolate min-h-screen overflow-hidden bg-app text-app-foreground">
+      <InkLandscapeBackground variant="workspace" />
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1600px]">
         <div
           className={[
-            "relative hidden h-screen shrink-0 transition-[width] duration-200 lg:block",
+            "relative z-20 hidden h-screen shrink-0 transition-[width] duration-200 lg:block",
             sidebarCollapsed ? "w-[88px]" : "w-[280px]"
           ].join(" ")}
         >

@@ -8,14 +8,22 @@ vi.mock("@/lib/history-folder-store", () => ({
     status: "authorized",
     folderName: "Dualens Histories"
   })),
-  chooseHistoryFolder: vi.fn()
+  chooseHistoryFolder: vi.fn(),
+  clearHistoryFolder: vi.fn(async () => ({
+    status: "unselected",
+    folderName: null
+  }))
 }));
 
 import SettingsPage from "@/app/(workspace)/settings/page";
 import { AppPreferencesProvider } from "@/lib/app-preferences";
-import { loadHistoryFolderState } from "@/lib/history-folder-store";
+import {
+  clearHistoryFolder,
+  loadHistoryFolderState
+} from "@/lib/history-folder-store";
 
 const loadHistoryFolderStateMock = vi.mocked(loadHistoryFolderState);
+const clearHistoryFolderMock = vi.mocked(clearHistoryFolder);
 
 function renderSettingsPage() {
   render(
@@ -28,6 +36,7 @@ function renderSettingsPage() {
 describe("SettingsPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    clearHistoryFolderMock.mockClear();
     loadHistoryFolderStateMock.mockResolvedValue({
       status: "authorized",
       folderName: "Dualens Histories"
@@ -46,6 +55,11 @@ describe("SettingsPage", () => {
     expect(screen.getAllByText("控制工作区界面、新建 agent 发言语言和证据展示语言；已保存历史保持创建时语言不变。")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "中文" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
+    expect(screen.getByTestId("settings-page-shell")).toHaveClass("max-w-[1600px]");
+    expect(screen.getByTestId("settings-card-language")).toHaveClass("overflow-hidden");
+    expect(screen.getByTestId("settings-card-history-folder")).toHaveClass("shadow-sm");
+    expect(screen.getByTestId("settings-card-icon-language")).toHaveClass("bg-[#D97757]/10");
+    expect(screen.getByTestId("settings-card-icon-history-folder")).toHaveClass("bg-[#D97757]/10");
     expect(screen.getByText("辩论历史保存文件夹")).toBeInTheDocument();
     expect(screen.queryByText("默认模型")).not.toBeInTheDocument();
     expect(screen.getByText("每一次辩论记录都会单独保存为一个 JSON 文件，并统一写入你选择的本地目录。")).toBeInTheDocument();
@@ -59,7 +73,10 @@ describe("SettingsPage", () => {
     expect(screen.getByTestId("current-history-folder-row")).not.toHaveClass("space-y-2");
     expect(screen.queryByText("已授权")).not.toBeInTheDocument();
     expect(screen.queryByText("如果目录权限失效，可以重新选择同一目录或切换到新的保存位置。")).not.toBeInTheDocument();
+    expect(screen.getByTestId("history-folder-status-field")).toHaveClass("h-12");
+    expect(screen.getByTestId("history-folder-status-field")).toHaveClass("font-mono");
     expect(screen.getByRole("button", { name: "重新选择" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "清除保存目录" })).toBeInTheDocument();
   });
 
   it("updates page chrome when the settings language changes", async () => {
@@ -82,6 +99,7 @@ describe("SettingsPage", () => {
 
     expect(await screen.findByRole("button", { name: "选择文件夹" })).toBeInTheDocument();
     expect(screen.getAllByText("未选择").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("history-folder-status-field")).toHaveClass("border-dashed");
   });
 
   it("disables folder picking when the browser does not support directory access", async () => {
@@ -96,5 +114,17 @@ describe("SettingsPage", () => {
     expect(screen.queryByText("当前浏览器不支持")).not.toBeInTheDocument();
     expect(screen.queryByText("当前浏览器不支持目录访问 API，无法选择本地文件夹。")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重新选择" })).toBeDisabled();
+  });
+
+  it("clears the saved history folder from the settings card", async () => {
+    renderSettingsPage();
+
+    expect(await screen.findByText("Dualens Histories")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "清除保存目录" }));
+
+    expect(clearHistoryFolderMock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("未选择")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "清除保存目录" })).not.toBeInTheDocument();
   });
 });

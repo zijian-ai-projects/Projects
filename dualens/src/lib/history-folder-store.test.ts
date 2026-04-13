@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  clearHistoryFolder,
   chooseHistoryFolder,
   formatHistoryFolderState,
   loadHistoryFolderState,
@@ -36,6 +37,60 @@ function mockIndexedDbOpenFailure() {
       open
     }
   });
+}
+
+function mockIndexedDbDeleteSuccess() {
+  const deleteRequest = {
+    onerror: null,
+    onsuccess: null,
+    error: null
+  } as unknown as IDBRequest;
+  const deleteMock = vi.fn().mockImplementation(() => {
+    queueMicrotask(() => {
+      deleteRequest.onsuccess?.(new Event("success"));
+    });
+
+    return deleteRequest;
+  });
+  const closeMock = vi.fn();
+  const db = {
+    objectStoreNames: {
+      contains: vi.fn(() => true)
+    },
+    transaction: vi.fn(() => ({
+      objectStore: vi.fn(() => ({
+        delete: deleteMock
+      }))
+    })),
+    close: closeMock
+  };
+  const openRequest = {
+    onerror: null,
+    onsuccess: null,
+    onupgradeneeded: null,
+    result: db,
+    error: null
+  } as unknown as IDBOpenDBRequest;
+  const openMock = vi.fn().mockImplementation(() => {
+    queueMicrotask(() => {
+      openRequest.onsuccess?.(new Event("success"));
+    });
+
+    return openRequest;
+  });
+
+  Object.defineProperty(window, "indexedDB", {
+    configurable: true,
+    value: {
+      open: openMock
+    }
+  });
+
+  return {
+    closeMock,
+    deleteMock,
+    openMock
+  };
 }
 
 describe("history-folder store helpers", () => {
@@ -107,5 +162,18 @@ describe("history-folder store helpers", () => {
       status: "needs-permission",
       folderName: null
     });
+  });
+
+  it("clears the saved folder handle from indexedDB", async () => {
+    (window as DirectoryPickerWindow).showDirectoryPicker = vi.fn();
+    const indexedDb = mockIndexedDbDeleteSuccess();
+
+    await expect(clearHistoryFolder()).resolves.toEqual({
+      status: "unselected",
+      folderName: null
+    });
+    expect(indexedDb.openMock).toHaveBeenCalledWith("dualens-history", 1);
+    expect(indexedDb.deleteMock).toHaveBeenCalledWith("history-folder-handle");
+    expect(indexedDb.closeMock).toHaveBeenCalledTimes(1);
   });
 });

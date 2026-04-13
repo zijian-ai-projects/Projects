@@ -203,4 +203,41 @@ describe("QuestionForm", () => {
       })
     );
   });
+
+  it("uses a five-character minimum for Chinese decision questions", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+
+    render(<QuestionForm onSubmit={onSubmit} uiLanguage="zh-CN" />);
+
+    await user.type(screen.getByLabelText("决策问题"), "换工作吗");
+    await user.click(screen.getByRole("button", { name: "开始辩论" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("问题至少需要 5 个字符。");
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("决策问题"));
+    await user.type(screen.getByLabelText("决策问题"), "要换工作吗");
+    await user.click(screen.getByRole("button", { name: "开始辩论" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        question: "要换工作吗",
+        language: "zh-CN"
+      })
+    );
+  });
+
+  it("keeps a ten-character minimum for English decision questions", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+
+    render(<QuestionForm onSubmit={onSubmit} uiLanguage="en" />);
+
+    await user.type(screen.getByLabelText("Decision question"), "Move now?");
+    await user.click(screen.getByRole("button", { name: "Start debate" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Question must be at least 10 characters.");
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });

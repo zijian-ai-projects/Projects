@@ -75,6 +75,21 @@ describe("product entry routes", () => {
     });
   });
 
+  it("keeps use-case cards compact and visually centered inside the scenario panel", () => {
+    render(
+      <RootProviders>
+        <HomePage />
+      </RootProviders>
+    );
+
+    const scenarioCard = screen.getByText("复杂选择").closest("div");
+
+    expect(scenarioCard).toHaveClass("min-h-[5.75rem]");
+    expect(scenarioCard).toHaveClass("items-center");
+    expect(scenarioCard).toHaveClass("justify-center");
+    expect(scenarioCard).toHaveClass("text-center");
+  });
+
   it("uses the shared language preference for the landing page", async () => {
     render(
       <RootProviders>

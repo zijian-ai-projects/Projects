@@ -1,17 +1,17 @@
 # Projects
 
-作品集式项目总仓库，用来集中展示多个独立项目。
+用于集中管理多个独立项目的总仓库。
 
 ![Repository Type](https://img.shields.io/badge/Repo-Portfolio-blue)
 ![Projects](https://img.shields.io/badge/Projects-1-0f766e)
 ![Primary Project](https://img.shields.io/badge/Featured-Dualens-c2410c)
 ![Status](https://img.shields.io/badge/Status-Active-1d4ed8)
 
-这里不把所有代码混在一起，而是按“一个项目一个一级目录”的方式组织。仓库根目录负责导航和展示，每个子项目各自维护源码、文档、依赖和运行说明。
+这里不把所有代码混在一起，而是按“一个项目一个一级目录”的方式组织。仓库根目录负责导航，每个子项目各自维护源码、文档、依赖和运行说明。
 
 ## 仓库定位
 
-- 作为 GitHub 作品集入口，集中展示多个项目
+- 集中管理和导航多个项目
 - 每个项目独立成目录，方便单独演示、运行和扩展
 - 根 README 负责概览，子项目 README 负责细节
 
@@ -21,8 +21,6 @@
 > 一个面向复杂决策场景的双智能体辅助决策系统。
 >
 > 它会先围绕用户问题搜索资料、抽取共享证据，再让两个数字员工基于同一组资料展开多轮辩论，最后输出结构化决策总结。
->
-> `AI Product` `Multi-Agent Workflow` `Decision Support` `Retrieval-Augmented Debate`
 >
 > - 目录：[`dualens/`](./dualens)
 > - 项目说明：[`dualens/README.md`](./dualens/README.md)
@@ -89,13 +87,3 @@ Projects/
 - `src/`
 - `docs/`（可选）
 - `package.json` 或对应语言/框架的项目配置
-
-## Suggested next slots
-
-如果你想把这个仓库继续做成更完整的作品集，下一批项目可以优先补这几类：
-
-- AI 工具型项目：强调效率、工作流、自动化
-- 数据或检索型项目：强调信息处理、搜索、结构化输出
-- 个人效率工具：强调产品感和落地能力
-
-这样你的仓库会形成更清晰的项目梯度，而不是只有一个方向。

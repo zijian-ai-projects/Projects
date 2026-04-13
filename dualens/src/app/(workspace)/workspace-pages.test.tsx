@@ -27,6 +27,23 @@ function renderWorkspacePage(page: ReactNode) {
 }
 
 describe("workspace pages", () => {
+  it.each([
+    ["history", <HistoryPage key="history" />],
+    ["providers", <ProvidersPage key="providers" />],
+    ["search engines", <SearchEnginesPage key="search-engines" />],
+    ["settings", <SettingsPage key="settings" />]
+  ])("renders the shared shan-shui background behind the %s workspace page", async (name, page) => {
+    renderWorkspacePage(page);
+
+    expect(screen.getByTestId("ink-landscape-background")).toHaveAttribute("data-variant", "workspace");
+    expect(document.querySelectorAll('[data-shan-shui-strip="workspace"]')).toHaveLength(2);
+    if (name === "history") {
+      expect(await screen.findByLabelText("搜索历史")).toBeInTheDocument();
+    } else if (name === "settings") {
+      expect(await screen.findByTestId("current-history-folder-row")).toBeInTheDocument();
+    }
+  });
+
   it("restores the history page", async () => {
     renderWorkspacePage(<HistoryPage />);
 

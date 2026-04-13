@@ -156,9 +156,9 @@ export function HomePage({ initialLanguage }: { initialLanguage?: UiLanguage }) 
               {copy.scenarios.title}
             </h2>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]">
             {copy.scenarios.items.map((scenario) => (
-              <div key={scenario} className="flex min-h-24 items-end rounded-[20px] border border-app-line bg-app-soft p-4 text-sm font-medium text-app-strong">
+              <div key={scenario} className="flex min-h-[5.75rem] items-center justify-center rounded-[20px] border border-app-line bg-app-soft p-4 text-center text-sm font-medium leading-6 text-app-strong">
                 {scenario}
               </div>
             ))}

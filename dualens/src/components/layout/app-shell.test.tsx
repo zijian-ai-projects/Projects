@@ -26,6 +26,12 @@ vi.mock("next/link", () => ({
   )
 }));
 
+vi.mock("@/components/background/ink-landscape-background", () => ({
+  InkLandscapeBackground: ({ variant }: { variant: string }) => (
+    <div data-testid="ink-landscape-background" data-variant={variant} />
+  )
+}));
+
 import { AppShell } from "@/components/layout/app-shell";
 import { RootProviders } from "@/app/providers";
 

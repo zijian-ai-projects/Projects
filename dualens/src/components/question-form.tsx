@@ -115,8 +115,9 @@ function QuestionFormImpl({
   );
   const luminaIdentity = getLocalizedSideIdentityCopy("lumina", uiLanguage);
   const vigilaIdentity = getLocalizedSideIdentityCopy("vigila", uiLanguage);
+  const minimumQuestionLength = uiLanguage === "en" ? 10 : 5;
   const tooShortQuestionMessage =
-    uiLanguage === "en" ? "Question must be at least 10 characters." : "问题至少需要 10 个字符。";
+    uiLanguage === "en" ? "Question must be at least 10 characters." : "问题至少需要 5 个字符。";
   const sectionCopy =
     uiLanguage === "en"
       ? {
@@ -260,7 +261,7 @@ function QuestionFormImpl({
         setQuestionError(false);
         const formData = new FormData(event.currentTarget);
         const trimmedQuestion = readTrimmedField(formData, "question");
-        if (trimmedQuestion.length < 10) {
+        if (trimmedQuestion.length < minimumQuestionLength) {
           setQuestionError(true);
           return;
         }

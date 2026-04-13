@@ -62,6 +62,7 @@ export const WORKSPACE_COPY = {
       languageTitle: "Language",
       languageDescription:
         "Controls workspace copy, new agent responses, and evidence display language. Existing history keeps its original language.",
+      currentLanguage: "Current language",
       chinese: "中文",
       english: "English",
       historyTitle: "Debate history folder",
@@ -79,6 +80,7 @@ export const WORKSPACE_COPY = {
       unsupported: "Not supported",
       chooseFolder: "Choose folder",
       reselectFolder: "Choose again",
+      clearFolder: "Clear saved folder",
       processing: "Processing...",
       unsupportedMessage:
         "This browser does not support directory access, so local folder selection is unavailable.",
@@ -244,6 +246,7 @@ export const WORKSPACE_COPY = {
       languageTitle: "语言设置",
       languageDescription:
         "控制工作区界面、新建 agent 发言语言和证据展示语言；已保存历史保持创建时语言不变。",
+      currentLanguage: "当前语言",
       chinese: "中文",
       english: "English",
       historyTitle: "辩论历史保存文件夹",
@@ -261,6 +264,7 @@ export const WORKSPACE_COPY = {
       unsupported: "当前浏览器不支持",
       chooseFolder: "选择文件夹",
       reselectFolder: "重新选择",
+      clearFolder: "清除保存目录",
       processing: "处理中...",
       unsupportedMessage:
         "当前浏览器不支持目录访问 API，无法选择本地文件夹。",

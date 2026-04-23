@@ -5,10 +5,16 @@ import { POST as continuePOST } from "@/app/api/session/[sessionId]/continue/rou
 import { POST as premisePOST } from "@/app/api/session/[sessionId]/premise/route";
 import { POST as stopPOST } from "@/app/api/session/[sessionId]/stop/route";
 import { runtime } from "@/server/runtime";
+import {
+  createSessionOwnerCookieValue,
+  hashSessionOwnerToken,
+  SESSION_OWNER_COOKIE_NAME
+} from "@/server/session-auth";
 import { createSessionStore } from "@/server/session-store";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const SERVER_DEEPSEEK_API_KEY = "server-owned-deepseek-key";
+let createSessionRequestCounter = 0;
 
 function createSessionBody(overrides: Record<string, unknown> = {}) {
   return {
@@ -25,14 +31,52 @@ function createSessionBody(overrides: Record<string, unknown> = {}) {
 }
 
 async function createSession() {
+  createSessionRequestCounter += 1;
   const response = await POST(
     new Request("http://localhost/api/session", {
       method: "POST",
+      headers: {
+        "X-Forwarded-For": `198.51.100.${createSessionRequestCounter}`
+      },
       body: JSON.stringify(createSessionBody())
     })
   );
+  const payload = (await response.json()) as { id: string };
+  const ownerCookie = response.headers
+    .get("set-cookie")
+    ?.split(";")
+    .find((part) => part.trim().startsWith(`${SESSION_OWNER_COOKIE_NAME}=`))
+    ?.trim();
 
-  return response.json() as Promise<{ id: string }>;
+  return {
+    ...payload,
+    ownerCookie
+  };
+}
+
+function getRequiredOwnerCookie(session: { ownerCookie?: string }) {
+  expect(session.ownerCookie).toEqual(expect.stringContaining(`${SESSION_OWNER_COOKIE_NAME}=`));
+  return session.ownerCookie as string;
+}
+
+function createOwnerCookieForSession(sessionId: string, ownerToken: string) {
+  return `${SESSION_OWNER_COOKIE_NAME}=${createSessionOwnerCookieValue(sessionId, ownerToken)}`;
+}
+
+function createSessionRequest(
+  path: string,
+  session: { id: string; ownerCookie?: string },
+  init: RequestInit = {}
+) {
+  const headers = new Headers(init.headers);
+  if (session.ownerCookie) {
+    headers.set("Cookie", session.ownerCookie);
+  }
+
+  return new Request(`http://localhost/api/session/${session.id}${path}`, {
+    ...init,
+    headers
+  });
 }
 
 beforeEach(() => {
@@ -58,6 +102,8 @@ describe("POST /api/session", () => {
     expect(payload.config.provider.baseUrl).toBe("https://api.deepseek.com");
     expect(payload.config.provider.model).toBe("deepseek-chat");
     expect(payload.config.provider).not.toHaveProperty("apiKey");
+    expect(response.headers.get("set-cookie")).toContain(`${SESSION_OWNER_COOKIE_NAME}=`);
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
   });
 
   it("accepts and preserves a non-default firstSpeaker value", async () => {
@@ -215,6 +261,116 @@ describe("POST /api/session", () => {
     });
   });
 
+  it("rejects provider base URLs outside the server allowlist", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            providerConfig: {
+              baseUrl: "http://127.0.0.1:11434/v1",
+              apiKey: "client-key",
+              model: "local-model"
+            }
+          })
+        )
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error).toBeDefined();
+  });
+
+  it("rejects search endpoints outside the server allowlist", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            searchConfig: {
+              engineId: "tavily",
+              apiKey: "client-tavily-key",
+              endpoint: "https://attacker.example/search"
+            }
+          })
+        )
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error).toBeDefined();
+  });
+
+  it("rejects excessive round counts before starting a runner", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(
+          createSessionBody({
+            config: {
+              roundCount: 10_000
+            }
+          })
+        )
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error).toBeDefined();
+  });
+
+  it("blocks anonymous production session creation unless explicitly enabled", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("DUALENS_ALLOW_ANONYMOUS_SESSIONS", undefined);
+    vi.stubEnv("DUALENS_SESSION_API_TOKEN", undefined);
+
+    const response = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify(createSessionBody())
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(payload.error).toBeDefined();
+  });
+
+  it("rate limits repeated anonymous session creation by client IP", async () => {
+    vi.stubEnv("DUALENS_SESSION_RATE_LIMIT_MAX", "1");
+    const clientHeaders = {
+      "X-Forwarded-For": "198.51.100.23"
+    };
+
+    const firstResponse = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        headers: clientHeaders,
+        body: JSON.stringify(createSessionBody())
+      })
+    );
+    const secondResponse = await POST(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        headers: clientHeaders,
+        body: JSON.stringify(createSessionBody())
+      })
+    );
+
+    const payload = await secondResponse.json();
+
+    expect(firstResponse.status).toBe(201);
+    expect(secondResponse.status).toBe(429);
+    expect(payload.error).toBeDefined();
+  });
+
   it("rejects legacy provider fields at the client boundary", async () => {
     const response = await POST(
       new Request("http://localhost/api/session", {
@@ -237,7 +393,7 @@ describe("POST /api/session", () => {
   it("returns 400 for an invalid premise payload", async () => {
     const session = await createSession();
     const response = await premisePOST(
-      new Request("http://localhost/api/session/" + session.id + "/premise", {
+      createSessionRequest("/premise", session, {
         method: "POST",
         body: JSON.stringify({
           premise: "   "
@@ -255,7 +411,7 @@ describe("POST /api/session", () => {
   it("accepts and normalizes a premise value", async () => {
     const session = await createSession();
     const response = await premisePOST(
-      new Request("http://localhost/api/session/" + session.id + "/premise", {
+      createSessionRequest("/premise", session, {
         method: "POST",
         body: JSON.stringify({
           premise: "  value  "
@@ -289,7 +445,7 @@ describe("POST /api/session", () => {
     const created = await createSession();
 
     const response = await sessionGET(
-      new Request(`http://localhost/api/session/${created.id}`, {
+      createSessionRequest("", created, {
         method: "GET"
       }),
       { params: Promise.resolve({ sessionId: created.id }) }
@@ -314,8 +470,10 @@ describe("POST /api/session", () => {
       detail: "OpenAI-compatible request failed with status 401",
       suggestedFix: "Check the API key and confirm the endpoint accepts it."
     } as const;
+    const ownerToken = "persisted-diagnosis-owner-token";
     const session = {
       id: "persisted-diagnosis-session",
+      ownerTokenHash: hashSessionOwnerToken(ownerToken),
       question: "Should I move to another city?",
       presetSelection: {
         pairId: "cautious-aggressive",
@@ -348,7 +506,10 @@ describe("POST /api/session", () => {
     try {
       const response = await continuePOST(
         new Request("http://localhost/api/session/persisted-diagnosis-session/continue", {
-          method: "POST"
+          method: "POST",
+          headers: {
+            Cookie: createOwnerCookieForSession("persisted-diagnosis-session", ownerToken)
+          }
         }),
         { params: Promise.resolve({ sessionId: "persisted-diagnosis-session" }) }
       );
@@ -365,8 +526,10 @@ describe("POST /api/session", () => {
 
   it("drops malformed persisted diagnosis details when continue fails", async () => {
     const sessionStore = createSessionStore();
+    const ownerToken = "malformed-diagnosis-owner-token";
     const session = {
       id: "malformed-diagnosis-session",
+      ownerTokenHash: hashSessionOwnerToken(ownerToken),
       question: "Should I move to another city?",
       presetSelection: {
         pairId: "cautious-aggressive",
@@ -407,7 +570,10 @@ describe("POST /api/session", () => {
     try {
       const response = await continuePOST(
         new Request("http://localhost/api/session/malformed-diagnosis-session/continue", {
-          method: "POST"
+          method: "POST",
+          headers: {
+            Cookie: createOwnerCookieForSession("malformed-diagnosis-session", ownerToken)
+          }
         }),
         { params: Promise.resolve({ sessionId: "malformed-diagnosis-session" }) }
       );
@@ -434,5 +600,93 @@ describe("POST /api/session", () => {
 
     expect(response.status).toBe(404);
     expect(payload.error).toBeDefined();
+  });
+
+  it.each([
+    ["GET /api/session/{sessionId}", "GET", ""] as const,
+    ["POST /api/session/{sessionId}/continue", "POST", "/continue"] as const,
+    ["POST /api/session/{sessionId}/premise", "POST", "/premise"] as const,
+    ["POST /api/session/{sessionId}/stop", "POST", "/stop"] as const
+  ])("rejects missing owner credentials for %s", async (_label, method, path) => {
+    const session = await createSession();
+    const response = path === ""
+      ? await sessionGET(
+          new Request(`http://localhost/api/session/${session.id}`, { method }),
+          { params: Promise.resolve({ sessionId: session.id }) }
+        )
+      : path === "/continue"
+        ? await continuePOST(
+            new Request(`http://localhost/api/session/${session.id}${path}`, { method }),
+            { params: Promise.resolve({ sessionId: session.id }) }
+          )
+        : path === "/premise"
+          ? await premisePOST(
+              new Request(`http://localhost/api/session/${session.id}${path}`, {
+                method,
+                body: JSON.stringify({ premise: "owner check" })
+              }),
+              { params: Promise.resolve({ sessionId: session.id }) }
+            )
+          : await stopPOST(
+              new Request(`http://localhost/api/session/${session.id}${path}`, { method }),
+              { params: Promise.resolve({ sessionId: session.id }) }
+            );
+
+    expect(response.status).toBe(401);
+  });
+
+  it.each([
+    ["GET /api/session/{sessionId}", "GET", ""] as const,
+    ["POST /api/session/{sessionId}/continue", "POST", "/continue"] as const,
+    ["POST /api/session/{sessionId}/premise", "POST", "/premise"] as const,
+    ["POST /api/session/{sessionId}/stop", "POST", "/stop"] as const
+  ])("rejects wrong owner credentials for %s", async (_label, method, path) => {
+    const session = await createSession();
+    const otherSession = await createSession();
+    const wrongOwnerCookie = getRequiredOwnerCookie(otherSession);
+    const request = new Request(`http://localhost/api/session/${session.id}${path}`, {
+      method,
+      headers: {
+        Cookie: wrongOwnerCookie
+      },
+      ...(path === "/premise" ? { body: JSON.stringify({ premise: "owner check" }) } : {})
+    });
+    const context = { params: Promise.resolve({ sessionId: session.id }) };
+    const response = path === ""
+      ? await sessionGET(request, context)
+      : path === "/continue"
+        ? await continuePOST(request, context)
+        : path === "/premise"
+          ? await premisePOST(request, context)
+          : await stopPOST(request, context);
+
+    expect(response.status).toBe(403);
+  });
+
+  it.each([
+    ["GET /api/session/{sessionId}", "GET", ""] as const,
+    ["POST /api/session/{sessionId}/continue", "POST", "/continue"] as const,
+    ["POST /api/session/{sessionId}/premise", "POST", "/premise"] as const,
+    ["POST /api/session/{sessionId}/stop", "POST", "/stop"] as const
+  ])("allows correct owner credentials for %s", async (_label, method, path) => {
+    const session = await createSession();
+    const ownerCookie = getRequiredOwnerCookie(session);
+    const request = new Request(`http://localhost/api/session/${session.id}${path}`, {
+      method,
+      headers: {
+        Cookie: ownerCookie
+      },
+      ...(path === "/premise" ? { body: JSON.stringify({ premise: "owner check" }) } : {})
+    });
+    const context = { params: Promise.resolve({ sessionId: session.id }) };
+    const response = path === ""
+      ? await sessionGET(request, context)
+      : path === "/continue"
+        ? await continuePOST(request, context)
+        : path === "/premise"
+          ? await premisePOST(request, context)
+          : await stopPOST(request, context);
+
+    expect(response.status).toBeLessThan(400);
   });
 });

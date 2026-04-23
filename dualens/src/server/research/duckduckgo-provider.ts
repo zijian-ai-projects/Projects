@@ -1,13 +1,23 @@
+import { lookup } from "node:dns/promises";
+import {
+  assertAllowedPublicFetchUrl,
+  isAllowedPublicFetchUrl,
+  isLocalOrPrivateHostname
+} from "@/lib/url-safety";
 import type { ExtractedPage, PageExtractor } from "@/server/research/page-extractor";
 import type { SearchProvider, SearchResult } from "@/server/research/search-provider";
 
+type ResolveHostname = (hostname: string) => Promise<readonly string[]>;
+
 type DuckDuckGoProviderOptions = {
   fetch?: typeof fetch;
+  resolveHostname?: ResolveHostname;
 };
 
 const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/";
 const MAX_RESULTS = 5;
 const MAX_DATA_POINTS = 3;
+const MAX_EXTRACT_REDIRECTS = 3;
 
 function decodeHtmlEntities(value: string) {
   return value
@@ -59,7 +69,7 @@ export function extractDuckDuckGoResults(html: string): SearchResult[] {
     }
 
     const url = normalizeUrl(rawUrl);
-    if (!/^https?:\/\//i.test(url) || seen.has(url)) {
+    if (!isAllowedPublicFetchUrl(url) || seen.has(url)) {
       continue;
     }
 
@@ -120,10 +130,75 @@ export function extractPageSnapshot(html: string): ExtractedPage {
   };
 }
 
+function normalizeLookupHostname(hostname: string) {
+  return hostname.replace(/^\[/, "").replace(/\]$/, "");
+}
+
+async function resolveHostnameWithDns(hostname: string) {
+  const records = await lookup(normalizeLookupHostname(hostname), {
+    all: true,
+    verbatim: true
+  });
+
+  return records.map((record) => record.address);
+}
+
+async function assertAllowedResolvedPublicUrl(
+  url: string,
+  resolveHostname: ResolveHostname
+) {
+  const allowedUrl = assertAllowedPublicFetchUrl(url);
+  const addresses = await resolveHostname(allowedUrl.hostname);
+
+  if (
+    addresses.length === 0 ||
+    addresses.some((address) => isLocalOrPrivateHostname(address))
+  ) {
+    throw new Error("URL is not allowed for server-side fetching");
+  }
+
+  return allowedUrl;
+}
+
+async function fetchPublicPage(
+  url: string,
+  fetchImpl: typeof fetch,
+  resolveHostname: ResolveHostname,
+  redirectCount = 0
+): Promise<Response> {
+  const allowedUrl = await assertAllowedResolvedPublicUrl(url, resolveHostname);
+  const response = await fetchImpl(allowedUrl.toString(), {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      Accept: "text/html,application/xhtml+xml"
+    },
+    redirect: "manual"
+  });
+
+  if (response.status >= 300 && response.status < 400) {
+    if (redirectCount >= MAX_EXTRACT_REDIRECTS) {
+      throw new Error("Page extract request exceeded the redirect limit");
+    }
+
+    const location = response.headers.get("location");
+    if (!location) {
+      throw new Error(`Page extract request failed with status ${response.status}`);
+    }
+
+    const redirectUrl = new URL(location, allowedUrl).toString();
+    await assertAllowedResolvedPublicUrl(redirectUrl, resolveHostname);
+
+    return fetchPublicPage(redirectUrl, fetchImpl, resolveHostname, redirectCount + 1);
+  }
+
+  return response;
+}
+
 export function createDuckDuckGoProvider(
   options: DuckDuckGoProviderOptions = {}
 ): SearchProvider & PageExtractor {
   const fetchImpl = options.fetch ?? fetch;
+  const resolveHostname = options.resolveHostname ?? resolveHostnameWithDns;
 
   return {
     async search(query: string) {
@@ -141,12 +216,7 @@ export function createDuckDuckGoProvider(
       return extractDuckDuckGoResults(await response.text());
     },
     async extract(url: string) {
-      const response = await fetchImpl(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-          Accept: "text/html,application/xhtml+xml"
-        }
-      });
+      const response = await fetchPublicPage(url, fetchImpl, resolveHostname);
 
       if (!response.ok) {
         throw new Error(`Page extract request failed with status ${response.status}`);

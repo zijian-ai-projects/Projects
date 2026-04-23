@@ -1,0 +1,44 @@
+# systemd unit example for Dualens.
+# Draft only. Adjust paths and user/group for the target host.
+
+[Unit]
+Description=Dualens Next.js application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dualens
+Group=dualens
+WorkingDirectory=/opt/dualens/current/dualens
+EnvironmentFile=/etc/dualens/dualens.env
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=3000
+ExecStart=/usr/bin/pnpm start
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+# Least privilege hardening.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/dualens /var/log/dualens
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+
+# Keep networking available for provider/search egress. Use host firewall or egress proxy for tighter control.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Resource controls. Tune for the host.
+LimitNOFILE=65535
+MemoryMax=1G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

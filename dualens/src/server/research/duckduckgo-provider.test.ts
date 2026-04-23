@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { extractDuckDuckGoResults, extractPageSnapshot } from "@/server/research/duckduckgo-provider";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createDuckDuckGoProvider,
+  extractDuckDuckGoResults,
+  extractPageSnapshot
+} from "@/server/research/duckduckgo-provider";
 
 describe("duckduckgo provider helpers", () => {
   it("extracts search results from DuckDuckGo html", () => {
@@ -79,5 +83,48 @@ describe("duckduckgo provider helpers", () => {
         "Average salary grew to 120000 dollars across the city."
       ]
     });
+  });
+
+  it("does not fetch local or private page extraction URLs", async () => {
+    const fetchMock = vi.fn(async () => new Response("<html><body>internal</body></html>"));
+    const provider = createDuckDuckGoProvider({
+      fetch: fetchMock as unknown as typeof fetch,
+      resolveHostname: async (hostname) => [hostname]
+    });
+
+    await expect(provider.extract("http://127.0.0.1:3000/admin")).rejects.toThrow(/not allowed/i);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not fetch public hostnames that resolve to private addresses", async () => {
+    const fetchMock = vi.fn(async () => new Response("<html><body>internal</body></html>"));
+    const provider = createDuckDuckGoProvider({
+      fetch: fetchMock as unknown as typeof fetch,
+      resolveHostname: async () => ["10.0.0.5"]
+    });
+
+    await expect(provider.extract("https://public.example/admin")).rejects.toThrow(/not allowed/i);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not follow redirects to local or private page extraction URLs", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(null, {
+        status: 302,
+        headers: {
+          Location: "http://169.254.169.254/latest/meta-data"
+        }
+      })
+    );
+    const provider = createDuckDuckGoProvider({
+      fetch: fetchMock as unknown as typeof fetch,
+      resolveHostname: async (hostname) => [hostname]
+    });
+
+    await expect(provider.extract("https://example.com/redirect")).rejects.toThrow(/not allowed/i);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

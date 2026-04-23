@@ -1,11 +1,16 @@
 import { z } from "zod";
 import { TEMPERAMENT_PAIRS } from "@/lib/presets";
+import {
+  isAllowedProviderBaseUrl,
+  isAllowedSearchEndpoint
+} from "@/lib/url-safety";
 import type {
   DebateMode,
   DebatePresetSelection,
   TemperamentPairId
 } from "@/lib/types";
 
+const MAX_SESSION_ROUND_COUNT = 5;
 const TEMPERAMENT_PAIR_IDS = TEMPERAMENT_PAIRS.map(
   (pair) => pair.id
 ) as [TemperamentPairId, ...TemperamentPairId[]];
@@ -17,22 +22,35 @@ const trimmedOptionalStringSchema = z.string().trim().min(1).optional();
 const modelSchema = trimmedStringSchema.min(1);
 const debateModeSchema = z.enum(["shared-evidence", "private-evidence"]);
 const providerConfigSchema = z.object({
-  baseUrl: trimmedStringSchema.min(1).url(),
+  baseUrl: trimmedStringSchema.min(1).url().refine(isAllowedProviderBaseUrl, {
+    message: "Provider base URL is not allowed"
+  }),
   apiKey: trimmedStringSchema.min(1),
   model: trimmedStringSchema.min(1)
 }).strict();
-const searchConfigSchema = z.object({
-  engineId: z.enum(["bing", "baidu", "google", "tavily"]),
-  apiKey: trimmedStringSchema.min(1),
-  endpoint: trimmedStringSchema.min(1).url(),
-  engineIdentifier: trimmedStringSchema.min(1).optional(),
-  extra: trimmedStringSchema.min(1).optional()
-}).strict();
+const searchConfigSchema = z
+  .object({
+    engineId: z.enum(["bing", "baidu", "google", "tavily"]),
+    apiKey: trimmedStringSchema.min(1),
+    endpoint: trimmedStringSchema.min(1).url(),
+    engineIdentifier: trimmedStringSchema.min(1).optional(),
+    extra: trimmedStringSchema.min(1).optional()
+  })
+  .strict()
+  .superRefine((config, ctx) => {
+    if (!isAllowedSearchEndpoint(config.engineId, config.endpoint)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Search endpoint is not allowed",
+        path: ["endpoint"]
+      });
+    }
+  });
 const sessionConfigSchema = z.object({
   debateMode: debateModeSchema.optional(),
   sourceStrategy: z.enum(["credible-first", "full-web"]).optional(),
   searchDepth: z.enum(["quick", "standard", "deep"]).optional(),
-  roundCount: z.number().int().positive().optional(),
+  roundCount: z.number().int().positive().max(MAX_SESSION_ROUND_COUNT).optional(),
   summaryStyle: z.enum(["balanced", "concise", "actionable"]).optional()
 }).strict();
 

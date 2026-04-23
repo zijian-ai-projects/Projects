@@ -1,3 +1,4 @@
+import { isAllowedPublicFetchUrl } from "@/lib/url-safety";
 import type { SearchProvider, SearchResult } from "@/server/research/search-provider";
 
 type TavilyProviderOptions = {
@@ -29,7 +30,7 @@ export function mapTavilyResults(payload: TavilyResponse): SearchResult[] {
       continue;
     }
 
-    if (!/^https?:\/\//i.test(result.url) || seen.has(result.url)) {
+    if (!isAllowedPublicFetchUrl(result.url) || seen.has(result.url)) {
       continue;
     }
 

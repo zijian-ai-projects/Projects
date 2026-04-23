@@ -180,7 +180,7 @@ describe("runtime built-in model mapping", () => {
       createSessionInput({
         model: "gpt-4.1",
         providerConfig: {
-          baseUrl: "https://gateway.example/v1",
+          baseUrl: "https://api.openai.com/v1",
           apiKey: "client-openai-key",
           model: "gpt-4.1"
         }
@@ -196,13 +196,13 @@ describe("runtime built-in model mapping", () => {
     );
 
     expect(session.config.provider).toMatchObject({
-      baseUrl: "https://gateway.example/v1",
+      baseUrl: "https://api.openai.com/v1",
       model: "gpt-4.1"
     });
     expect(session.config.provider).not.toHaveProperty("apiKey");
     expect(providerCalls.map((call) => String(call[0]))).toEqual([
-      "https://gateway.example/v1/chat/completions",
-      "https://gateway.example/v1/chat/completions"
+      "https://api.openai.com/v1/chat/completions",
+      "https://api.openai.com/v1/chat/completions"
     ]);
     expect(providerCalls[0]?.[1]?.headers).toMatchObject({
       Authorization: "Bearer client-openai-key"

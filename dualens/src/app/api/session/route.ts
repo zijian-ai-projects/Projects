@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { runtime } from "@/server/runtime";
+import {
+  createSessionOwnerToken,
+  hashSessionOwnerToken,
+  setSessionOwnerCookie
+} from "@/server/session-auth";
 import type { SessionDiagnosis } from "@/lib/types";
 
 function isClientInputError(error: unknown) {
@@ -16,6 +21,58 @@ const DIAGNOSTIC_CATEGORIES = new Set([
   "timeout",
   "unknown"
 ] as const);
+const DEFAULT_SESSION_CREATE_RATE_LIMIT_MAX = 30;
+const SESSION_CREATE_RATE_LIMIT_WINDOW_MS = 60_000;
+const sessionCreateRateLimits = new Map<string, { count: number; resetAt: number }>();
+
+function getConfiguredRateLimitMax() {
+  const rawValue = process.env.DUALENS_SESSION_RATE_LIMIT_MAX;
+  const parsed = rawValue ? Number(rawValue) : DEFAULT_SESSION_CREATE_RATE_LIMIT_MAX;
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_SESSION_CREATE_RATE_LIMIT_MAX;
+}
+
+function getClientRateLimitKey(request: Request) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    "anonymous"
+  );
+}
+
+function isSessionApiTokenValid(request: Request) {
+  const expectedToken = process.env.DUALENS_SESSION_API_TOKEN?.trim();
+  if (!expectedToken) {
+    return false;
+  }
+
+  return (
+    request.headers.get("authorization")?.trim() === `Bearer ${expectedToken}` ||
+    request.headers.get("x-dualens-session-token")?.trim() === expectedToken
+  );
+}
+
+function isAnonymousProductionSessionAllowed(request: Request) {
+  if (process.env.NODE_ENV !== "production") {
+    return true;
+  }
+
+  return process.env.DUALENS_ALLOW_ANONYMOUS_SESSIONS === "1" || isSessionApiTokenValid(request);
+}
+
+function isSessionCreateRateLimited(request: Request) {
+  const now = Date.now();
+  const key = getClientRateLimitKey(request);
+  const existing = sessionCreateRateLimits.get(key);
+  const current = existing && existing.resetAt > now
+    ? existing
+    : { count: 0, resetAt: now + SESSION_CREATE_RATE_LIMIT_WINDOW_MS };
+
+  current.count += 1;
+  sessionCreateRateLimits.set(key, current);
+
+  return current.count > getConfiguredRateLimitMax();
+}
 
 function isSessionDiagnosisStage(value: unknown): value is SessionDiagnosis["stage"] {
   return typeof value === "string" && SESSION_DIAGNOSIS_STAGES.has(value as SessionDiagnosis["stage"]);
@@ -40,10 +97,25 @@ function isSessionDiagnosis(value: unknown): value is SessionDiagnosis {
 }
 
 export async function POST(request: Request) {
+  if (!isAnonymousProductionSessionAllowed(request)) {
+    return NextResponse.json({ error: "Anonymous session creation is disabled" }, { status: 403 });
+  }
+
+  if (isSessionCreateRateLimited(request)) {
+    return NextResponse.json({ error: "Too many session creation requests" }, { status: 429 });
+  }
+
   try {
     const body = await request.json();
-    const session = await runtime.createSession(body);
-    return NextResponse.json(session, { status: 201 });
+    const ownerToken = createSessionOwnerToken();
+    const session = await runtime.createSession(body, {
+      ownerTokenHash: hashSessionOwnerToken(ownerToken)
+    });
+    const response = NextResponse.json(session, { status: 201 });
+
+    setSessionOwnerCookie(response, session.id, ownerToken);
+
+    return response;
   } catch (error) {
     if (isClientInputError(error)) {
       return NextResponse.json({ error: "Invalid session input" }, { status: 400 });

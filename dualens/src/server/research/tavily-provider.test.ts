@@ -37,4 +37,36 @@ describe("tavily provider", () => {
       }
     ]);
   });
+
+  it("drops Tavily results that point at local or private URLs", () => {
+    expect(
+      mapTavilyResults({
+        results: [
+          {
+            title: "Metadata",
+            url: "http://169.254.169.254/latest/meta-data",
+            content: "internal"
+          },
+          {
+            title: "Loopback",
+            url: "http://127.0.0.1:3000/admin",
+            content: "internal"
+          },
+          {
+            title: "Public report",
+            url: "https://example.com/report",
+            content: "Public summary."
+          }
+        ]
+      })
+    ).toEqual([
+      {
+        title: "Public report",
+        url: "https://example.com/report",
+        sourceName: "example.com",
+        sourceType: "web",
+        snippet: "Public summary."
+      }
+    ]);
+  });
 });

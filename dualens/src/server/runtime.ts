@@ -51,10 +51,18 @@ type DiagnosableSession = SessionRecord & {
   stage: SessionDiagnosisStage;
 };
 
+function createSafeDuckDuckGoProvider() {
+  return createDuckDuckGoProvider(
+    process.env.NODE_ENV === "test"
+      ? { resolveHostname: async (hostname: string) => [hostname] }
+      : undefined
+  );
+}
+
 function createUnsupportedConfiguredSearchProvider(
   config: SearchEngineRuntimeConfig
 ): ConfiguredResearchProvider {
-  const extractor = createDuckDuckGoProvider();
+  const extractor = createSafeDuckDuckGoProvider();
 
   return {
     async search() {
@@ -73,7 +81,7 @@ function createResearchProvider(searchConfig?: SearchEngineRuntimeConfig) {
         apiKey: searchConfig.apiKey,
         endpoint: searchConfig.endpoint
       });
-      const extractor = createDuckDuckGoProvider();
+      const extractor = createSafeDuckDuckGoProvider();
 
       return {
         search: tavilyProvider.search,
@@ -89,7 +97,7 @@ function createResearchProvider(searchConfig?: SearchEngineRuntimeConfig) {
   const tavilyApiKey = process.env.TAVILY_API_KEY?.trim();
   if (tavilyApiKey) {
     const tavilyProvider = createTavilyProvider({ apiKey: tavilyApiKey });
-    const extractor = createDuckDuckGoProvider();
+    const extractor = createSafeDuckDuckGoProvider();
 
     return {
       search: tavilyProvider.search,
@@ -108,7 +116,7 @@ function createResearchProvider(searchConfig?: SearchEngineRuntimeConfig) {
   }
 
   return {
-    ...createDuckDuckGoProvider(),
+    ...createSafeDuckDuckGoProvider(),
     diagnosticBaseUrl: "https://html.duckduckgo.com/html/",
     diagnosticLabel: "duckduckgo"
   } satisfies ConfiguredResearchProvider;
@@ -669,11 +677,11 @@ function startSessionRunner(sessionId: string) {
 }
 
 export const runtime = {
-  async createSession(input: unknown) {
+  async createSession(input: unknown, options: { ownerTokenHash?: string } = {}) {
     const parsed = createSessionInputSchema.parse(input);
     const provider = parsed.providerConfig ?? resolveDeepSeekProviderConfig(parsed.model);
 
-    const session = await orchestrator.createSession({
+    let session = await orchestrator.createSession({
       question: parsed.question,
       presetSelection: parsed.presetSelection,
       firstSpeaker: parsed.firstSpeaker,
@@ -685,6 +693,13 @@ export const runtime = {
         ...(parsed.searchConfig ? { searchProvider: parsed.searchConfig } : {})
       }
     });
+
+    if (options.ownerTokenHash) {
+      session = store.save({
+        ...cloneSession(session),
+        ownerTokenHash: options.ownerTokenHash
+      });
+    }
 
     startSessionRunner(session.id);
 

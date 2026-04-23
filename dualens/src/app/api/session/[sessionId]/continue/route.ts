@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runtime } from "@/server/runtime";
 import { createSessionStore } from "@/server/session-store";
+import { authorizeSessionRequest } from "@/server/session-auth";
 import type { SessionDiagnosis } from "@/lib/types";
 
 const sessionStore = createSessionStore();
@@ -36,8 +37,12 @@ function isSessionDiagnosis(value: unknown): value is SessionDiagnosis {
   );
 }
 
-export async function POST(_: Request, context: { params: Promise<{ sessionId: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await context.params;
+  const authorization = authorizeSessionRequest(request, sessionId);
+  if (!authorization.authorized) {
+    return NextResponse.json({ error: authorization.error }, { status: authorization.status });
+  }
 
   try {
     const session = await runtime.continueSession(sessionId);

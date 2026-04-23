@@ -202,6 +202,7 @@ export function buildResearchProgressView(
 
 export type SessionRecord = {
   id: string;
+  ownerTokenHash?: string;
   question: string;
   presetSelection: DebatePresetSelection;
   firstSpeaker: SpeakerSideKey;
